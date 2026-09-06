@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
+import { ActivityRowActions } from './activity-row-actions';
 import { ACTIVITY_TYPE_ICONS, ACTIVITY_TYPE_LABELS, formatDateSlash } from '@/lib/domain-labels';
 import type { ActivityWithClient } from '@/lib/api/types';
 
@@ -36,7 +37,10 @@ export function ActivitiesTimeline({ activities }: { activities: ActivityWithCli
                   >
                     {activity.clientName}
                   </Link>
-                  <span className="text-xs text-muted-foreground">{activity.owner.fullName}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{activity.owner.fullName}</span>
+                    <ActivityRowActions clientId={activity.clientId} activity={activity} />
+                  </div>
                 </div>
                 <span className="block text-xs font-medium text-muted-foreground">
                   {formatDateSlash(activity.activityDate)} ・ {ACTIVITY_TYPE_LABELS[activity.activityType]}

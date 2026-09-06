@@ -237,6 +237,18 @@ export interface ClientNote {
   updatedBy: string | null;
 }
 
+/** 常設メモに添付されたファイル1件分のメタデータ(実体はSupabase Storage、ダウンロードは署名付きURL経由) */
+export interface ClientNoteAttachment {
+  id: string;
+  noteId: string;
+  clientId: string;
+  fileName: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  createdAt: string;
+  createdBy: string | null;
+}
+
 /** GET /clients/:id/dossier（クライアントカルテ） */
 export interface ClientDossier {
   client: ClientDetail;

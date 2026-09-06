@@ -5,6 +5,7 @@ import { OverviewTab } from './overview-tab';
 import { ActivitiesTab } from './activities-tab';
 import { ActionItemsTab } from './action-items-tab';
 import { AlertsTab } from './alerts-tab';
+import { NotesTab } from './notes-tab';
 import type { ActionItem, Activity, Alert, ClientContact, ClientDetail, ClientNote } from '@/lib/api/types';
 
 interface ClientDetailTabsProps {
@@ -28,6 +29,7 @@ export function ClientDetailTabs({
     <Tabs defaultValue="overview">
       <TabsList>
         <TabsTrigger value="overview">概要</TabsTrigger>
+        <TabsTrigger value="notes">メモ</TabsTrigger>
         <TabsTrigger value="activities">活動履歴</TabsTrigger>
         <TabsTrigger value="action-items">次回アクション</TabsTrigger>
         <TabsTrigger value="alerts">
@@ -41,7 +43,10 @@ export function ClientDetailTabs({
       </TabsList>
 
       <TabsContent value="overview" className="mt-4">
-        <OverviewTab client={client} contacts={contacts} notes={notes} />
+        <OverviewTab client={client} contacts={contacts} />
+      </TabsContent>
+      <TabsContent value="notes" className="mt-4">
+        <NotesTab clientId={client.id} notes={notes} />
       </TabsContent>
       <TabsContent value="activities" className="mt-4">
         <ActivitiesTab clientId={client.id} activities={activities} />

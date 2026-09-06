@@ -1,7 +1,7 @@
 import { Star, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDateSlash } from '@/lib/domain-labels';
-import type { ClientContact, ClientDetail, ClientNote } from '@/lib/api/types';
+import type { ClientContact, ClientDetail } from '@/lib/api/types';
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -15,11 +15,9 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 export function OverviewTab({
   client,
   contacts,
-  notes,
 }: {
   client: ClientDetail;
   contacts: ClientContact[];
-  notes: ClientNote[];
 }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -81,26 +79,6 @@ export function OverviewTab({
                 </div>
               ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle>常設メモ</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {notes.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">
-              クライアントについて常に知っておくべきメモはまだありません
-            </p>
-          ) : (
-            notes.map((note) => (
-              <div key={note.id} className="rounded-md border border-border p-3">
-                <p className="text-sm whitespace-pre-wrap text-foreground">{note.content}</p>
-                <p className="mt-2 text-xs text-muted-foreground">{formatDateSlash(note.updatedAt.slice(0, 10))} 更新</p>
-              </div>
-            ))
           )}
         </CardContent>
       </Card>

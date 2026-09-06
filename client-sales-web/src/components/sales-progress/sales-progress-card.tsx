@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Loader2 } from 'lucide-react';
@@ -17,6 +18,7 @@ interface SalesProgressCardProps {
 }
 
 export function SalesProgressCard({ client, isPending, isOverlay }: SalesProgressCardProps) {
+  const router = useRouter();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: client.id,
     data: { stageId: client.salesStage.id },
@@ -28,6 +30,9 @@ export function SalesProgressCard({ client, isPending, isOverlay }: SalesProgres
       ref={isOverlay ? undefined : setNodeRef}
       {...(isOverlay ? {} : listeners)}
       {...(isOverlay ? {} : attributes)}
+      // activationConstraint(8px)により、ドラッグにならなかった通常のクリックはここまで到達する。
+      // カード＝詳細ページへの入口とし、編集・削除は詳細ページ側(ClientDetailActions)に集約する。
+      onClick={isOverlay ? undefined : () => router.push(`/clients/${client.id}`)}
       style={!isOverlay && transform ? { transform: CSS.Translate.toString(transform) } : undefined}
       className={cn(
         'relative touch-none rounded-lg border border-border bg-card p-3 shadow-sm select-none',

@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { AddActivityDialog } from './add-activity-dialog';
+import { ActivityRowActions } from '@/components/activities/activity-row-actions';
 import { ACTIVITY_TYPE_ICONS, ACTIVITY_TYPE_LABELS, formatDateSlash } from '@/lib/domain-labels';
 import type { Activity } from '@/lib/api/types';
 
@@ -34,7 +35,10 @@ export function ActivitiesTab({ clientId, activities }: { clientId: string; acti
                       <span className="text-xs font-medium text-muted-foreground">
                         {formatDateSlash(activity.activityDate)} ・ {ACTIVITY_TYPE_LABELS[activity.activityType]}
                       </span>
-                      <span className="text-xs text-muted-foreground">{activity.owner.fullName}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">{activity.owner.fullName}</span>
+                        <ActivityRowActions clientId={clientId} activity={activity} />
+                      </div>
                     </div>
                     {activity.participants ? (
                       <p className="text-xs text-muted-foreground">参加者: {activity.participants}</p>
