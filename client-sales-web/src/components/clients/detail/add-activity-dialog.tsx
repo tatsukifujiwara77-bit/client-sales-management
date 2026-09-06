@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,9 +18,12 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NextActionFields } from '@/components/activities/next-action-fields';
 import { clientFetchApi } from '@/lib/api/client';
-import { ACTIVITY_TYPE_LABELS, type ActivityType } from '@/lib/domain-labels';
+import { ApiError } from '@/lib/api/errors';
+import { ACTIVITY_TYPE_LABELS, type ActivityType, type NotifyBefore } from '@/lib/domain-labels';
 import { CLIENT_NOTE_TEMPLATE } from '@/lib/note-template';
+import type { Activity } from '@/lib/api/types';
 
 const ACTIVITY_TYPES: ActivityType[] = ['visit', 'meeting', 'call', 'email', 'online', 'other'];
 const ACTIVITY_TYPE_ITEMS = ACTIVITY_TYPES.map((type) => ({ value: type, label: ACTIVITY_TYPE_LABELS[type] }));
@@ -34,6 +38,8 @@ export function AddActivityDialog({ clientId }: { clientId: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activityType, setActivityType] = useState<ActivityType>('visit');
+  const [showNextAction, setShowNextAction] = useState(false);
+  const [nextActionNotifyBefore, setNextActionNotifyBefore] = useState<NotifyBefore>('none');
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,7 +48,7 @@ export function AddActivityDialog({ clientId }: { clientId: string }) {
 
     const formData = new FormData(event.currentTarget);
     try {
-      await clientFetchApi(`/clients/${clientId}/activities`, {
+      const activity = await clientFetchApi<Activity>(`/clients/${clientId}/activities`, {
         method: 'POST',
         body: {
           activityType,
@@ -51,6 +57,27 @@ export function AddActivityDialog({ clientId }: { clientId: string }) {
           notes: formData.get('notes') || undefined,
         },
       });
+
+      if (showNextAction) {
+        try {
+          await clientFetchApi(`/clients/${clientId}/action-items`, {
+            method: 'POST',
+            body: {
+              content: formData.get('nextActionContent'),
+              dueDate: formData.get('nextActionDueDate'),
+              notifyBefore: nextActionNotifyBefore,
+              sourceActivityId: activity.id,
+            },
+          });
+        } catch (actionItemError) {
+          toast.error(
+            actionItemError instanceof ApiError
+              ? `活動は記録されましたが、次回アクションの登録に失敗しました: ${actionItemError.message}`
+              : '活動は記録されましたが、次回アクションの登録に失敗しました',
+          );
+        }
+      }
+
       setOpen(false);
       router.refresh();
     } catch (error) {
@@ -114,6 +141,13 @@ export function AddActivityDialog({ clientId }: { clientId: string }) {
                 defaultValue={CLIENT_NOTE_TEMPLATE}
               />
             </div>
+
+            <NextActionFields
+              enabled={showNextAction}
+              onEnabledChange={setShowNextAction}
+              notifyBefore={nextActionNotifyBefore}
+              onNotifyBeforeChange={setNextActionNotifyBefore}
+            />
 
             {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
           </div>
