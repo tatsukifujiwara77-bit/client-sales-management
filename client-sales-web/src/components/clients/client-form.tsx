@@ -60,6 +60,12 @@ export function ClientForm({ offices, salesStages, client = null }: ClientFormPr
     setValues((prev) => ({ ...prev, [key]: value }));
   }
 
+  // Base UIのSelectは`items`を渡さないと<SelectValue>が生の value(UUID等)をそのまま表示してしまうため、
+  // value/labelのマッピングを明示的に用意する(clients-filter-bar.tsxと同じ対応)。
+  const officeItems = offices.map((o) => ({ value: o.id, label: o.name }));
+  const stageItems = salesStages.map((s) => ({ value: s.id, label: s.name }));
+  const temperatureItems = TEMPERATURE_VALUES.map((t) => ({ value: t, label: TEMPERATURE_LABELS[t] }));
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
@@ -122,7 +128,11 @@ export function ClientForm({ offices, salesStages, client = null }: ClientFormPr
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label>拠点</Label>
-          <Select value={values.officeId} onValueChange={(v) => update('officeId', v ?? '')}>
+          <Select
+            items={officeItems}
+            value={values.officeId}
+            onValueChange={(v) => update('officeId', v ?? '')}
+          >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="選択してください" />
             </SelectTrigger>
@@ -138,7 +148,11 @@ export function ClientForm({ offices, salesStages, client = null }: ClientFormPr
 
         <div className="flex flex-col gap-1.5">
           <Label>営業フェーズ</Label>
-          <Select value={values.salesStageId} onValueChange={(v) => update('salesStageId', v ?? '')}>
+          <Select
+            items={stageItems}
+            value={values.salesStageId}
+            onValueChange={(v) => update('salesStageId', v ?? '')}
+          >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="選択してください" />
             </SelectTrigger>
@@ -157,6 +171,7 @@ export function ClientForm({ offices, salesStages, client = null }: ClientFormPr
         <div className="flex flex-col gap-1.5">
           <Label>温度感</Label>
           <Select
+            items={temperatureItems}
             value={values.temperature}
             onValueChange={(v) => update('temperature', (v as Temperature) ?? 'unknown')}
           >
