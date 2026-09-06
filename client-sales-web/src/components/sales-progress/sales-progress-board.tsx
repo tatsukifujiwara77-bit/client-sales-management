@@ -33,6 +33,15 @@ export function SalesProgressBoard({ initialColumns }: SalesProgressBoardProps) 
   const [pendingClientIds, setPendingClientIds] = useState<Set<string>>(new Set());
   const [activeClient, setActiveClient] = useState<ClientListItem | null>(null);
 
+  // カード上の削除操作(router.refresh())後にサーバーの最新状態を反映するため、
+  // 親から渡されるinitialColumnsが変わったらローカルstateも追従させる。
+  // (useEffectではなくレンダー中に比較・更新することで、古い状態が一瞬表示されるのを防ぐ)
+  const [prevInitialColumns, setPrevInitialColumns] = useState(initialColumns);
+  if (initialColumns !== prevInitialColumns) {
+    setPrevInitialColumns(initialColumns);
+    setColumns(initialColumns);
+  }
+
   const sensors = useSensors(
     // 8px動かすまではドラッグ開始しない（クリックとの誤反応を防ぐ）
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { clientFetchApi } from '@/lib/api/client';
 import { ACTIVITY_TYPE_LABELS, type ActivityType } from '@/lib/domain-labels';
+import { CLIENT_NOTE_TEMPLATE } from '@/lib/note-template';
 import { ClientPicker, type PickedClient } from './client-picker';
 
 const ACTIVITY_TYPES: ActivityType[] = ['visit', 'meeting', 'call', 'email', 'online', 'other'];
@@ -128,7 +129,13 @@ export function AddActivityGlobalDialog() {
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="notes">商談メモ</Label>
-              <Textarea id="notes" name="notes" rows={5} placeholder="話した内容を記録します" />
+              <Textarea
+                id="notes"
+                name="notes"
+                rows={16}
+                className="font-mono text-sm"
+                defaultValue={CLIENT_NOTE_TEMPLATE}
+              />
             </div>
 
             {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
