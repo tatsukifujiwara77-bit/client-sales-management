@@ -1,0 +1,26 @@
+# dependencies
+**/node_modules
+
+# build output
+**/dist
+**/build
+**/.next
+**/out
+
+# env files
+**/.env
+**/.env.*
+!**/.env.example
+
+# logs
+**/*.log
+**/npm-debug.log*
+
+# coverage
+**/coverage
+
+# OS
+**/.DS_Store
+
+# editors
+**/.idea
