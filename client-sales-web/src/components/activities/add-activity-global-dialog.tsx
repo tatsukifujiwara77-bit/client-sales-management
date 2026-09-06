@@ -1,0 +1,147 @@
+'use client';
+
+import { useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { Plus, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { clientFetchApi } from '@/lib/api/client';
+import { ACTIVITY_TYPE_LABELS, type ActivityType } from '@/lib/domain-labels';
+import { ClientPicker, type PickedClient } from './client-picker';
+
+const ACTIVITY_TYPES: ActivityType[] = ['visit', 'meeting', 'call', 'email', 'online', 'other'];
+const ACTIVITY_TYPE_ITEMS = ACTIVITY_TYPES.map((type) => ({ value: type, label: ACTIVITY_TYPE_LABELS[type] }));
+
+function todayDateString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * 営業活動一覧画面（クライアント横断）用の活動登録ダイアログ。
+ * クライアント詳細内の AddActivityDialog と違い、先にクライアントを選ぶ手順が要る。
+ * 設計書 11.4「スマホUI：訪問先から1〜2分で登録」に沿って、最少操作で完了できるようにする。
+ */
+export function AddActivityGlobalDialog() {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [client, setClient] = useState<PickedClient | null>(null);
+  const [activityType, setActivityType] = useState<ActivityType>('visit');
+
+  function resetAndClose() {
+    setOpen(false);
+    setClient(null);
+    setActivityType('visit');
+    setErrorMessage(null);
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!client) {
+      setErrorMessage('クライアントを選択してください');
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    const formData = new FormData(event.currentTarget);
+    try {
+      await clientFetchApi(`/clients/${client.id}/activities`, {
+        method: 'POST',
+        body: {
+          activityType,
+          activityDate: formData.get('activityDate'),
+          participants: formData.get('participants') || undefined,
+          notes: formData.get('notes') || undefined,
+        },
+      });
+      resetAndClose();
+      router.refresh();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '登録に失敗しました');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : resetAndClose())}>
+      <DialogTrigger render={<Button />}>
+        <Plus className="size-4" />
+        活動を記録
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>営業活動を記録</DialogTitle>
+            <DialogDescription>クライアントを選んで、訪問・商談などの活動内容を記録します。</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4 py-4">
+            <div className="flex flex-col gap-1.5">
+              <Label>クライアント</Label>
+              <ClientPicker value={client} onChange={setClient} />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label>活動種別</Label>
+              <Select
+                items={ACTIVITY_TYPE_ITEMS}
+                value={activityType}
+                onValueChange={(v) => setActivityType(v as ActivityType)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACTIVITY_TYPE_ITEMS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="activityDate">活動日</Label>
+              <Input id="activityDate" name="activityDate" type="date" required defaultValue={todayDateString()} />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="participants">参加者</Label>
+              <Input id="participants" name="participants" placeholder="例: 先方 髙江洲様 / 当社 藤原" />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="notes">商談メモ</Label>
+              <Textarea id="notes" name="notes" rows={5} placeholder="話した内容を記録します" />
+            </div>
+
+            {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+          </div>
+
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
+              記録する
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
