@@ -110,13 +110,14 @@ export class ActivitiesService {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
 
-    let builder = client
-      .from('activities')
-      .select(
-        'id, client_id, activity_type, activity_date, notes, ' +
-          'owner:profiles!activities_owner_id_fkey(id, full_name), client:clients(company_name)',
-        { count: 'exact' },
-      );
+    // officeIdで絞り込む場合のみ !inner にして client.office_id をフィルタ可能にする
+    // （findForMeetingReviewと同じ方針）。
+    const clientEmbed = query.officeId ? 'client:clients!inner(company_name, office_id)' : 'client:clients(company_name)';
+
+    let builder = client.from('activities').select(
+      `id, client_id, activity_type, activity_date, notes, owner:profiles!activities_owner_id_fkey(id, full_name), ${clientEmbed}`,
+      { count: 'exact' },
+    );
 
     if (query.activityType) {
       builder = builder.eq('activity_type', query.activityType);
@@ -126,6 +127,9 @@ export class ActivitiesService {
     }
     if (query.ownerId) {
       builder = builder.eq('owner_id', query.ownerId);
+    }
+    if (query.officeId) {
+      builder = builder.eq('client.office_id', query.officeId);
     }
     if (query.dateFrom) {
       builder = builder.gte('activity_date', query.dateFrom);

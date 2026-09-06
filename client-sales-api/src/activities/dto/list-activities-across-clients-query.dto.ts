@@ -22,6 +22,10 @@ export class ListActivitiesAcrossClientsQueryDto {
   ownerId?: string;
 
   @IsOptional()
+  @IsUUID()
+  officeId?: string;
+
+  @IsOptional()
   @IsDateString()
   dateFrom?: string;
 

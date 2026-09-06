@@ -44,12 +44,21 @@ export class AlertsService {
     const pageSize = query.pageSize ?? 50;
     const status = query.status ?? 'open';
 
-    let builder = client.from('alerts').select(COLUMNS, { count: 'exact' }).eq('status', status);
+    // officeIdで絞り込む場合のみ !inner にして client.office_id をフィルタ可能にする。
+    const columns = query.officeId
+      ? 'id, client_id, action_item_id, alert_type, target_date, status, created_at, updated_at, ' +
+        'client:clients!inner(company_name, office_id, assignments:client_assignments(is_primary, profile:profiles(id, full_name)))'
+      : COLUMNS;
+
+    let builder = client.from('alerts').select(columns, { count: 'exact' }).eq('status', status);
     if (clientId) {
       builder = builder.eq('client_id', clientId);
     }
     if (query.alertType) {
       builder = builder.eq('alert_type', query.alertType);
+    }
+    if (query.officeId) {
+      builder = builder.eq('client.office_id', query.officeId);
     }
 
     const from = (page - 1) * pageSize;
@@ -64,17 +73,21 @@ export class AlertsService {
     return { items: rows.map(mapAlertRow), total: count ?? 0, page, pageSize };
   }
 
-  async getCounts(clientId?: string): Promise<AlertCounts> {
+  async getCounts(clientId?: string, officeId?: string): Promise<AlertCounts> {
     const client = this.supabaseRequestService.getClient();
 
     const countFor = async (alertType: AlertType): Promise<number> => {
+      const columns = officeId ? 'id, client:clients!inner(office_id)' : 'id';
       let builder = client
         .from('alerts')
-        .select('id', { count: 'exact', head: true })
+        .select(columns, { count: 'exact', head: true })
         .eq('alert_type', alertType)
         .eq('status', 'open');
       if (clientId) {
         builder = builder.eq('client_id', clientId);
+      }
+      if (officeId) {
+        builder = builder.eq('client.office_id', officeId);
       }
       const { count, error } = await builder;
       throwIfSupabaseError(error, { entityName: 'Alert' });
@@ -96,7 +109,10 @@ export class AlertsService {
     query: ListAlertsQueryDto,
     clientId?: string,
   ): Promise<{ counts: AlertCounts; alerts: PagedResult<Alert> }> {
-    const [counts, alerts] = await Promise.all([this.getCounts(clientId), this.list(query, clientId)]);
+    const [counts, alerts] = await Promise.all([
+      this.getCounts(clientId, query.officeId),
+      this.list(query, clientId),
+    ]);
     return { counts, alerts };
   }
 

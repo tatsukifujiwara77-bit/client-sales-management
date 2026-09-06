@@ -243,6 +243,17 @@ describe('ActivitiesService', () => {
       expect(calls.gte).toEqual(expect.arrayContaining([['activity_date', '2026-05-01']]));
       expect(calls.lte).toEqual(expect.arrayContaining([['activity_date', '2026-05-31']]));
     });
+
+    it('filters by officeId using an inner join on the embedded client', async () => {
+      const { builder, calls } = createBuilderMock({ data: [], error: null, count: 0 });
+      const supabaseRequestService = { getClient: () => ({ from: () => builder }) } as unknown as SupabaseRequestService;
+      const service = new ActivitiesService(supabaseRequestService, buildStubAlertsService());
+
+      await service.listAcrossClients({ officeId: 'office-1', page: 1, pageSize: 20 });
+
+      expect(calls.select[0][0]).toContain('client:clients!inner(company_name, office_id)');
+      expect(calls.eq).toEqual(expect.arrayContaining([['client.office_id', 'office-1']]));
+    });
   });
 
   describe('findForMeetingReview', () => {

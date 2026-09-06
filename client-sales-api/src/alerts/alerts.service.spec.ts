@@ -133,5 +133,27 @@ describe('AlertsService', () => {
         primaryAssignee: { id: 'user-1', fullName: '藤原 樹' },
       });
     });
+
+    it('filters list() by officeId using an inner join on the embedded client', async () => {
+      const { builder, calls } = createBuilderMock({ data: [], error: null, count: 0 });
+      const supabaseRequestService = buildSupabaseRequestServiceMock(() => builder);
+      const service = new AlertsService(supabaseRequestService, null);
+
+      await service.list({ status: 'open', officeId: 'office-1' });
+
+      expect(calls.select[0][0]).toContain('client:clients!inner(company_name, office_id');
+      expect(calls.eq).toEqual(expect.arrayContaining([['client.office_id', 'office-1']]));
+    });
+
+    it('filters getCounts() by officeId using an inner join on the embedded client', async () => {
+      const { builder, calls } = createBuilderMock({ data: [], error: null, count: 0 });
+      const supabaseRequestService = buildSupabaseRequestServiceMock(() => builder);
+      const service = new AlertsService(supabaseRequestService, null);
+
+      await service.getCounts(undefined, 'office-1');
+
+      expect(calls.select[0][0]).toBe('id, client:clients!inner(office_id)');
+      expect(calls.eq).toEqual(expect.arrayContaining([['client.office_id', 'office-1']]));
+    });
   });
 });

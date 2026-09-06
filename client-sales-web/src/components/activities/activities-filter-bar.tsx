@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ACTIVITY_TYPE_LABELS, type ActivityType } from '@/lib/domain-labels';
+import type { Office } from '@/lib/api/types';
 
 const ALL = '__all__';
 const ACTIVITY_TYPES: ActivityType[] = ['visit', 'meeting', 'call', 'email', 'online', 'other'];
 
-export function ActivitiesFilterBar() {
+export function ActivitiesFilterBar({ offices }: { offices: Office[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -36,9 +37,30 @@ export function ActivitiesFilterBar() {
     { value: ALL, label: 'すべての種別' },
     ...ACTIVITY_TYPES.map((t) => ({ value: t, label: ACTIVITY_TYPE_LABELS[t] })),
   ];
+  const officeItems = [
+    { value: ALL, label: 'すべての拠点' },
+    ...offices.map((o) => ({ value: o.id, label: o.name })),
+  ];
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <Select
+        items={officeItems}
+        defaultValue={searchParams.get('officeId') ?? ALL}
+        onValueChange={(v) => updateParam('officeId', v)}
+      >
+        <SelectTrigger className="w-full sm:w-40">
+          <SelectValue placeholder="拠点" />
+        </SelectTrigger>
+        <SelectContent>
+          {officeItems.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
       <Select
         items={typeItems}
         defaultValue={searchParams.get('activityType') ?? ALL}

@@ -3,7 +3,7 @@ import { ActivitiesFilterBar } from '@/components/activities/activities-filter-b
 import { ActivitiesTimeline } from '@/components/activities/activities-timeline';
 import { AddActivityGlobalDialog } from '@/components/activities/add-activity-global-dialog';
 import { PaginationBar } from '@/components/clients/pagination-bar';
-import type { ActivityWithClient, PagedResult } from '@/lib/api/types';
+import type { ActivityWithClient, Office, PagedResult } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
 
@@ -16,17 +16,22 @@ export default async function ActivitiesPage({ searchParams }: PageProps<'/activ
 
   const query = new URLSearchParams();
   const activityType = toSingle(params.activityType);
+  const officeId = toSingle(params.officeId);
   const dateFrom = toSingle(params.dateFrom);
   const dateTo = toSingle(params.dateTo);
   const page = Number(toSingle(params.page) ?? '1') || 1;
 
   if (activityType) query.set('activityType', activityType);
+  if (officeId) query.set('officeId', officeId);
   if (dateFrom) query.set('dateFrom', dateFrom);
   if (dateTo) query.set('dateTo', dateTo);
   query.set('page', String(page));
   query.set('pageSize', String(PAGE_SIZE));
 
-  const activities = await serverFetchApi<PagedResult<ActivityWithClient>>(`/activities?${query.toString()}`);
+  const [activities, offices] = await Promise.all([
+    serverFetchApi<PagedResult<ActivityWithClient>>(`/activities?${query.toString()}`),
+    serverFetchApi<Office[]>('/offices'),
+  ]);
 
   return (
     <div className="space-y-4">
@@ -34,7 +39,7 @@ export default async function ActivitiesPage({ searchParams }: PageProps<'/activ
         <AddActivityGlobalDialog />
       </div>
 
-      <ActivitiesFilterBar />
+      <ActivitiesFilterBar offices={offices} />
 
       <ActivitiesTimeline activities={activities.items} />
 
