@@ -22,6 +22,7 @@ describe('UsersController', () => {
       list: vi.fn().mockResolvedValue([]),
       listPending: vi.fn().mockResolvedValue([]),
       approve: vi.fn().mockResolvedValue({ id: 'user-2' }),
+      reject: vi.fn().mockResolvedValue(undefined),
     } as unknown as UsersService;
   }
 
@@ -79,5 +80,22 @@ describe('UsersController', () => {
       controller.approve('user-2', { role: 'sales_rep' }, buildUser({ role: 'office_manager' })),
     ).toThrow(ForbiddenException);
     expect(service.approve).not.toHaveBeenCalled();
+  });
+
+  it('delegates reject() to the service when called by an admin', async () => {
+    const service = buildServiceMock();
+    const controller = new UsersController(service);
+
+    await controller.reject('user-2', buildUser({ role: 'admin' }));
+
+    expect(service.reject).toHaveBeenCalledWith('user-2');
+  });
+
+  it('rejects reject() for a non-admin', async () => {
+    const service = buildServiceMock();
+    const controller = new UsersController(service);
+
+    expect(() => controller.reject('user-2', buildUser({ role: 'sales_rep' }))).toThrow(ForbiddenException);
+    expect(service.reject).not.toHaveBeenCalled();
   });
 });

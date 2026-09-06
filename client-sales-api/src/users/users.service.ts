@@ -89,4 +89,17 @@ export class UsersService {
     throwIfSupabaseError(error, { entityName: 'User' });
     return mapProfileRow(data as unknown as RawProfileRow);
   }
+
+  /**
+   * 承認待ちユーザーを却下する（profiles行ごと削除）。
+   * 誤って有効なユーザーを削除しないよう、is_active=falseの行のみを対象にする
+   * （すでに承認済みのユーザーはこのメソッドでは削除されない）。
+   * 呼び出し元（コントローラ）でadmin限定であることを確認済みの前提。
+   */
+  async reject(id: string): Promise<void> {
+    const client = this.supabaseRequestService.getClient();
+    const { error } = await client.from('profiles').delete().eq('id', id).eq('is_active', false);
+
+    throwIfSupabaseError(error, { entityName: 'User' });
+  }
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, Loader2, UserCheck } from 'lucide-react';
+import { CheckCircle2, Loader2, UserCheck, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -27,6 +27,7 @@ function PendingUserRow({ user, offices }: { user: PendingUser; offices: Office[
   const [role, setRole] = useState<UserRole>(user.role);
   const [officeId, setOfficeId] = useState<string>(user.officeId ?? NO_OFFICE_VALUE);
   const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
 
   async function handleApprove() {
     setIsApproving(true);
@@ -41,6 +42,22 @@ function PendingUserRow({ user, offices }: { user: PendingUser; offices: Office[
       toast.error(error instanceof ApiError ? error.message : '承認に失敗しました');
     } finally {
       setIsApproving(false);
+    }
+  }
+
+  async function handleReject() {
+    if (!window.confirm(`${user.fullName}さんの申請を却下しますか？この操作は取り消せません。`)) {
+      return;
+    }
+    setIsRejecting(true);
+    try {
+      await clientFetchApi(`/users/${user.id}`, { method: 'DELETE' });
+      toast.success(`${user.fullName}さんの申請を却下しました`);
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : '却下に失敗しました');
+    } finally {
+      setIsRejecting(false);
     }
   }
 
@@ -85,7 +102,17 @@ function PendingUserRow({ user, offices }: { user: PendingUser; offices: Office[
           </Select>
         </div>
 
-        <Button size="sm" onClick={handleApprove} disabled={isApproving}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleReject}
+          disabled={isApproving || isRejecting}
+          className="text-destructive hover:text-destructive"
+        >
+          {isRejecting ? <Loader2 className="size-3.5 animate-spin" /> : <XCircle className="size-3.5" />}
+          却下する
+        </Button>
+        <Button size="sm" onClick={handleApprove} disabled={isApproving || isRejecting}>
           {isApproving ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
           承認する
         </Button>

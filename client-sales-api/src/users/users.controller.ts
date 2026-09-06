@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseUUIDPipe, Patch } from '@nestjs/common';
 import { UsersService } from './users.service.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { ApproveUserDto } from './dto/approve-user.dto.js';
@@ -40,5 +40,14 @@ export class UsersController {
       throw new ForbiddenException('Only admins can approve users.');
     }
     return this.usersService.approve(id, dto);
+  }
+
+  /** 承認待ちユーザーを却下する（is_active=falseの行のみ削除対象） */
+  @Delete('users/:id')
+  reject(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Only admins can reject users.');
+    }
+    return this.usersService.reject(id);
   }
 }

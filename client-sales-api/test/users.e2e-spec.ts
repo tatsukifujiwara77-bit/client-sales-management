@@ -38,4 +38,10 @@ describe('UsersController (e2e)', () => {
       .send({ role: 'sales_rep' })
       .expect(401);
   });
+
+  it('DELETE /users/:id requires authentication (401 without Authorization header)', async () => {
+    await request(app.getHttpServer())
+      .delete('/users/00000000-0000-0000-0000-000000000000')
+      .expect(401);
+  });
 });

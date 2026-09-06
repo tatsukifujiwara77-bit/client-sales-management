@@ -8,7 +8,7 @@ interface MockResult {
 }
 
 function createBuilderMock(result: MockResult) {
-  const chainMethods = ['select', 'eq', 'order', 'maybeSingle', 'update', 'single'] as const;
+  const chainMethods = ['select', 'eq', 'order', 'maybeSingle', 'update', 'single', 'delete'] as const;
   const builder: Record<string, unknown> = {};
   for (const method of chainMethods) {
     builder[method] = (..._args: unknown[]) => builder;
@@ -118,5 +118,29 @@ describe('UsersService', () => {
       officeId: 'office-1',
       isActive: true,
     });
+  });
+
+  it('rejects a pending user by deleting the profile row', async () => {
+    const deleteFn = vi.fn().mockReturnThis();
+    const eqCalls: unknown[][] = [];
+    const builder: Record<string, unknown> = {
+      delete: deleteFn,
+      eq: (...args: unknown[]) => {
+        eqCalls.push(args);
+        return builder;
+      },
+      // oxlint-disable-next-line unicorn/no-thenable -- supabase-jsのクエリビルダーの仕様を模倣している
+      then: (resolve: (v: { error: null }) => unknown) => resolve({ error: null }),
+    };
+    const supabaseRequestService = { getClient: () => ({ from: () => builder }) } as unknown as SupabaseRequestService;
+    const service = new UsersService(supabaseRequestService);
+
+    await service.reject('user-2');
+
+    expect(deleteFn).toHaveBeenCalled();
+    expect(eqCalls).toEqual([
+      ['id', 'user-2'],
+      ['is_active', false],
+    ]);
   });
 });
