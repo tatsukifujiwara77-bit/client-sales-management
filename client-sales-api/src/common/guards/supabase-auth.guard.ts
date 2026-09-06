@@ -1,13 +1,14 @@
 import {
   Inject,
   Injectable,
+  Logger,
   UnauthorizedException,
   type CanActivate,
   type ExecutionContext,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 import { SUPABASE_ANON_CLIENT } from '../../supabase/supabase.constants.js';
 import type { AuthUser, AuthenticatedRequest } from '../types/authenticated-request.js';
@@ -35,6 +36,8 @@ interface ProfileRow {
  */
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {
+  private readonly logger = new Logger(SupabaseAuthGuard.name);
+
   constructor(
     private readonly reflector: Reflector,
     private readonly configService: ConfigService,
@@ -75,7 +78,13 @@ export class SupabaseAuthGuard implements CanActivate {
       throw new UnauthorizedException('Failed to resolve the authenticated user profile.');
     }
     if (!profile) {
-      throw new UnauthorizedException('No profile is associated with this account.');
+      // profilesが存在しないケース（0002のtriggerは auth.users への「新規追加時」しか
+      // 発火しないため、この機能を入れる前から存在したログイン済みアカウント等では
+      // 永久にprofilesが作られない）。管理者の「ユーザー承認」一覧に出てくるよう、
+      // 承認待ち(is_active=false)行をその場で自己修復的に作成する
+      // （profiles_insert_selfポリシーにより、自分のidに対してのみ可能）。
+      await this.createPendingProfile(authenticatedClient, user);
+      throw new UnauthorizedException('This account has been deactivated.');
     }
     if (!profile.is_active) {
       throw new UnauthorizedException('This account has been deactivated.');
@@ -100,6 +109,29 @@ export class SupabaseAuthGuard implements CanActivate {
       return undefined;
     }
     return header.slice('Bearer '.length).trim();
+  }
+
+  /**
+   * profilesが無いユーザーのために、承認待ち(is_active=false)行を自己修復的に作成する。
+   * 同時リクエストで既に作られていた場合（unique_violation, code 23505）は無視する。
+   * それ以外のエラーは（RLSの想定外の拒否等）そのまま握りつぶし、呼び出し元が
+   * 通常の401を返す（=このユーザーは相変わらず未承認のまま、という安全側の挙動になる）。
+   */
+  private async createPendingProfile(client: SupabaseClient, user: User): Promise<void> {
+    const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const fullName =
+      (typeof metadata.full_name === 'string' && metadata.full_name) ||
+      (typeof metadata.name === 'string' && metadata.name) ||
+      user.email ||
+      '未設定';
+
+    const { error } = await client
+      .from('profiles')
+      .insert({ id: user.id, full_name: fullName, role: 'sales_rep', is_active: false });
+
+    if (error && error.code !== '23505') {
+      this.logger.error(`Failed to self-heal a missing profile row for user ${user.id}: ${error.message}`);
+    }
   }
 
   private createAuthenticatedClient(token: string): SupabaseClient {
