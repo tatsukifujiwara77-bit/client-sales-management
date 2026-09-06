@@ -107,6 +107,14 @@ export const ALERT_TYPE_ICONS: Record<AlertType, LucideIcon> = {
   no_visit: AlertTriangle,
 };
 
+export type UserRole = 'admin' | 'office_manager' | 'sales_rep';
+
+export const USER_ROLE_LABELS: Record<UserRole, string> = {
+  admin: '管理者',
+  office_manager: '拠点マネージャー',
+  sales_rep: '営業担当',
+};
+
 export type NotifyBefore = '1_day' | '3_days' | '1_week' | 'none';
 
 export const NOTIFY_BEFORE_LABELS: Record<NotifyBefore, string> = {

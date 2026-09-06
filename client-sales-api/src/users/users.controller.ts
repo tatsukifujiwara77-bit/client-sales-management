@@ -1,6 +1,7 @@
-import { Controller, Get } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch } from '@nestjs/common';
 import { UsersService } from './users.service.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { ApproveUserDto } from './dto/approve-user.dto.js';
 import type { AuthUser } from '../common/types/authenticated-request.js';
 
 @Controller()
@@ -17,5 +18,27 @@ export class UsersController {
   @Get('users')
   list() {
     return this.usersService.list();
+  }
+
+  /**
+   * 承認待ち（is_active=false）のユーザー一覧（設定画面「ユーザー承認」タブ）。
+   * RLSでは判定できない一覧系操作のため、ここで明示的にロールチェックを行う
+   * （alerts.controller.ts の recompute と同じ方針）。
+   */
+  @Get('users/pending')
+  listPending(@CurrentUser() user: AuthUser) {
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Only admins can view pending users.');
+    }
+    return this.usersService.listPending();
+  }
+
+  /** 承認待ちユーザーを有効化する（ロール・拠点を確定させた上でis_active=trueに） */
+  @Patch('users/:id/approve')
+  approve(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ApproveUserDto, @CurrentUser() user: AuthUser) {
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Only admins can approve users.');
+    }
+    return this.usersService.approve(id, dto);
   }
 }

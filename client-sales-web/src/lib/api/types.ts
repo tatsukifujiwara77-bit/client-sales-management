@@ -137,6 +137,15 @@ export interface UserSummary {
   isActive: boolean;
 }
 
+/** 承認待ち（is_active=false）のユーザー1件（設定画面「ユーザー承認」タブ用） */
+export interface PendingUser {
+  id: string;
+  fullName: string;
+  role: UserRole;
+  officeId: string | null;
+  createdAt: string;
+}
+
 export interface SalesStage {
   id: string;
   name: string;

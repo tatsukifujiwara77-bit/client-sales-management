@@ -34,3 +34,30 @@ export function mapProfileRow(row: RawProfileRow): UserSummary {
     isActive: row.is_active,
   };
 }
+
+/** 承認待ち（is_active=false）のユーザー1件（設定画面「ユーザー承認」タブ用） */
+export interface PendingUser {
+  id: string;
+  fullName: string;
+  role: AuthUser['role'];
+  officeId: string | null;
+  createdAt: string;
+}
+
+export interface RawPendingProfileRow {
+  id: string;
+  full_name: string;
+  role: AuthUser['role'];
+  office_id: string | null;
+  created_at: string;
+}
+
+export function mapPendingProfileRow(row: RawPendingProfileRow): PendingUser {
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    role: row.role,
+    officeId: row.office_id,
+    createdAt: row.created_at,
+  };
+}

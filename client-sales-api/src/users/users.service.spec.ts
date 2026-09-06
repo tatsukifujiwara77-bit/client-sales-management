@@ -8,7 +8,7 @@ interface MockResult {
 }
 
 function createBuilderMock(result: MockResult) {
-  const chainMethods = ['select', 'eq', 'order', 'maybeSingle'] as const;
+  const chainMethods = ['select', 'eq', 'order', 'maybeSingle', 'update', 'single'] as const;
   const builder: Record<string, unknown> = {};
   for (const method of chainMethods) {
     builder[method] = (..._args: unknown[]) => builder;
@@ -72,5 +72,51 @@ describe('UsersService', () => {
     expect(result).toEqual([
       { id: 'user-1', fullName: '藤原 樹', role: 'admin', officeId: 'office-1', isActive: true },
     ]);
+  });
+
+  it('lists pending (is_active=false) users mapped to a summary with createdAt', async () => {
+    const builder = createBuilderMock({
+      data: [
+        {
+          id: 'user-2',
+          full_name: '佐藤 花子',
+          role: 'sales_rep',
+          office_id: null,
+          created_at: '2026-09-01T00:00:00.000Z',
+        },
+      ],
+      error: null,
+    });
+    const supabaseRequestService = { getClient: () => ({ from: () => builder }) } as unknown as SupabaseRequestService;
+    const service = new UsersService(supabaseRequestService);
+
+    const result = await service.listPending();
+    expect(result).toEqual([
+      {
+        id: 'user-2',
+        fullName: '佐藤 花子',
+        role: 'sales_rep',
+        officeId: null,
+        createdAt: '2026-09-01T00:00:00.000Z',
+      },
+    ]);
+  });
+
+  it('approves a pending user by setting role/office and is_active=true', async () => {
+    const builder = createBuilderMock({
+      data: { id: 'user-2', full_name: '佐藤 花子', role: 'sales_rep', office_id: 'office-1', is_active: true },
+      error: null,
+    });
+    const supabaseRequestService = { getClient: () => ({ from: () => builder }) } as unknown as SupabaseRequestService;
+    const service = new UsersService(supabaseRequestService);
+
+    const result = await service.approve('user-2', { role: 'sales_rep', officeId: 'office-1' });
+    expect(result).toEqual({
+      id: 'user-2',
+      fullName: '佐藤 花子',
+      role: 'sales_rep',
+      officeId: 'office-1',
+      isActive: true,
+    });
   });
 });

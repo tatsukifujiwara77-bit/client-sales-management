@@ -27,4 +27,15 @@ describe('UsersController (e2e)', () => {
   it('GET /users requires authentication (401 without Authorization header)', async () => {
     await request(app.getHttpServer()).get('/users').expect(401);
   });
+
+  it('GET /users/pending requires authentication (401 without Authorization header)', async () => {
+    await request(app.getHttpServer()).get('/users/pending').expect(401);
+  });
+
+  it('PATCH /users/:id/approve requires authentication (401 without Authorization header)', async () => {
+    await request(app.getHttpServer())
+      .patch('/users/00000000-0000-0000-0000-000000000000/approve')
+      .send({ role: 'sales_rep' })
+      .expect(401);
+  });
 });
