@@ -1,4 +1,4 @@
-import { dancingScript } from '@/lib/fonts';
+import { heroGreetingFont } from '@/lib/fonts';
 
 const WEEKDAY_LABELS_JA = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -8,20 +8,20 @@ interface HeroBannerProps {
   weeklyVisitCount: number;
 }
 
-/** Hello! の右上に添える控えめな光のアクセント */
+/** Hello! の右上に添える光のアクセント（デザイン画像準拠：4方向に伸びる筋＋短い斜めの筋の二重星） */
 function SparkleAccent() {
   return (
     <svg
       aria-hidden
       viewBox="0 0 40 40"
-      className="absolute -top-1 left-[90%] size-[3.2cqw] text-white/80"
+      className="absolute -top-[0.32em] -right-[0.55em] size-[0.42em] text-white/90"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="2.25"
       strokeLinecap="round"
     >
-      <path d="M20 4v11M20 25v11M4 20h11M25 20h11" />
-      <path d="M9 9l6 6M25 25l6 6M31 9l-6 6M15 25l-6 6" opacity="0.6" />
+      <path d="M20 2v14M20 24v14M2 20h14M24 20h14" />
+      <path d="M8 8l5 5M27 27l5 5M32 8l-5 5M13 27l-5 5" opacity="0.55" />
     </svg>
   );
 }
@@ -236,7 +236,7 @@ export function HeroBanner({ userName, weeklyVisitCount }: HeroBannerProps) {
         {/* 左エリア: 挨拶・メインメッセージ・サブメッセージ */}
         <div className="min-w-0">
           <p
-            className={`${dancingScript.className} relative inline-block text-[5.2cqw] leading-none text-white/95 drop-shadow-[0_1px_6px_rgba(30,58,138,0.25)]`}
+            className={`${heroGreetingFont.className} relative inline-block text-[8.6cqw] leading-none text-white drop-shadow-[0_1px_8px_rgba(30,58,138,0.3)]`}
           >
             Hello!
             <SparkleAccent />
