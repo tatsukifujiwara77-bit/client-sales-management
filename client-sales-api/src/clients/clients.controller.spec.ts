@@ -22,8 +22,18 @@ describe('ClientsController', () => {
       assign: vi.fn().mockResolvedValue([]),
       unassign: vi.fn().mockResolvedValue(undefined),
       getPipeline: vi.fn().mockResolvedValue([]),
+      remove: vi.fn().mockResolvedValue(undefined),
     } as unknown as ClientsService;
   }
+
+  it('delegates remove() with id', async () => {
+    const service = buildServiceMock();
+    const controller = new ClientsController(service);
+
+    await controller.remove('client-1');
+
+    expect(service.remove).toHaveBeenCalledWith('client-1');
+  });
 
   it('delegates getPipeline() to the service with query filters', async () => {
     const service = buildServiceMock();

@@ -10,4 +10,13 @@ describe('SalesStagesController', () => {
 
     expect(service.update).toHaveBeenCalledWith('stage-1', { sortOrder: 2 });
   });
+
+  it('delegates remove() with id', async () => {
+    const service = { remove: vi.fn().mockResolvedValue(undefined) } as unknown as SalesStagesService;
+    const controller = new SalesStagesController(service);
+
+    await controller.remove('stage-1');
+
+    expect(service.remove).toHaveBeenCalledWith('stage-1');
+  });
 });

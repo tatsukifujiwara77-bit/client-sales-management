@@ -63,6 +63,13 @@ export class ClientsController {
     return this.clientsService.update(id, dto, user);
   }
 
+  /** クライアントの削除（RLS: clients_delete_adminによりadmin限定）。関連する活動・次回アクション等はON DELETE CASCADEで一括削除される。 */
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.clientsService.remove(id);
+  }
+
   @Get(':id/assignments')
   listAssignments(@Param('id', ParseUUIDPipe) id: string) {
     return this.clientsService.listAssignments(id);

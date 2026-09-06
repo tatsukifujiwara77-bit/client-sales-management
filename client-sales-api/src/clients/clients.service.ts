@@ -299,6 +299,13 @@ export class ClientsService {
     return mapClientDetailRow(data as unknown as RawClientDetailRow);
   }
 
+  /** 関連する活動・次回アクション・アラート・担当割り当て等はON DELETE CASCADEで一括削除される。 */
+  async remove(id: string): Promise<void> {
+    const client = this.supabaseRequestService.getClient();
+    const { error } = await client.from('clients').delete().eq('id', id);
+    throwIfSupabaseError(error, { entityName: 'Client' });
+  }
+
   async listAssignments(clientId: string): Promise<ClientAssignmentItem[]> {
     const client = this.supabaseRequestService.getClient();
     const { data, error } = await client

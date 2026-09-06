@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { AlertCircle, ArrowLeft, Building2, MapPin } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ClientDetailActions } from '@/components/clients/detail/client-detail-actions';
 import { TEMPERATURE_LABELS } from '@/lib/domain-labels';
 import { formatDateWithWeekday } from '@/lib/domain-labels';
 import type { ClientDetail, NextActionSummary } from '@/lib/api/types';
@@ -15,10 +16,13 @@ const TEMPERATURE_EMOJI: Record<ClientDetail['temperature'], string> = {
 export function ClientDetailHeader({ client, nextAction }: { client: ClientDetail; nextAction: NextActionSummary | null }) {
   return (
     <div className="space-y-3">
-      <Link href="/clients" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" />
-        クライアント一覧へ戻る
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link href="/clients" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="size-4" />
+          クライアント一覧へ戻る
+        </Link>
+        <ClientDetailActions clientId={client.id} companyName={client.companyName} />
+      </div>
 
       <div className="rounded-lg border border-border bg-card p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

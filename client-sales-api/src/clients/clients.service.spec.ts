@@ -305,6 +305,23 @@ describe('ClientsService', () => {
     });
   });
 
+  describe('remove', () => {
+    it('deletes the client row', async () => {
+      const { builder, calls } = createBuilderMock({ data: null, error: null });
+      const service = new ClientsService(
+        buildSupabaseRequestServiceMock(() => builder),
+        buildStubContactsService(),
+        buildStubNotesService(),
+        buildStubActivitiesService(),
+        buildStubActionItemsService(),
+      );
+
+      await service.remove('client-1');
+
+      expect(calls.eq).toEqual(expect.arrayContaining([['id', 'client-1']]));
+    });
+  });
+
   describe('assign', () => {
     it('unsets the previous primary assignment before inserting a new primary one', async () => {
       const calledMethods: string[] = [];

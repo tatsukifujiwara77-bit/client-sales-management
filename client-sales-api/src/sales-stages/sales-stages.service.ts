@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseRequestService } from '../supabase/supabase-request.service.js';
 import { throwIfSupabaseError } from '../common/supabase/supabase-error.util.js';
 import type { UpdateSalesStageDto } from './dto/update-sales-stage.dto.js';
@@ -37,5 +37,17 @@ export class SalesStagesService {
       throw new NotFoundException('Sales stage not found.');
     }
     return mapSalesStageRow(data as unknown as RawSalesStageRow);
+  }
+
+  async remove(id: string): Promise<void> {
+    const client = this.supabaseRequestService.getClient();
+    const { error } = await client.from('sales_stages').delete().eq('id', id);
+
+    if (error?.code === '23503') {
+      throw new ConflictException(
+        'このフェーズを使用しているクライアントが存在するため削除できません。先にそれらのクライアントのフェーズを変更してください。',
+      );
+    }
+    throwIfSupabaseError(error, { entityName: 'Sales stage' });
   }
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ function StageRow({ stage }: { stage: SalesStage }) {
   const [name, setName] = useState(stage.name);
   const [sortOrder, setSortOrder] = useState(stage.sortOrder);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isDirty = name !== stage.name || sortOrder !== stage.sortOrder;
 
@@ -32,6 +33,22 @@ function StageRow({ stage }: { stage: SalesStage }) {
       toast.error(error instanceof ApiError ? error.message : '営業フェーズの更新に失敗しました');
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm(`「${stage.name}」を削除しますか？このフェーズを使用しているクライアントがいる場合は削除できません。`)) {
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await clientFetchApi(`/sales-stages/${stage.id}`, { method: 'DELETE' });
+      toast.success(`「${stage.name}」を削除しました`);
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : '営業フェーズの削除に失敗しました');
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -54,12 +71,22 @@ function StageRow({ stage }: { stage: SalesStage }) {
         </div>
         {stage.isClosed ? (
           <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            営業終了フェーズ
+            契約済みフェーズ
           </span>
         ) : null}
-        <Button size="sm" onClick={handleSave} disabled={!isDirty || isSaving}>
+        <Button size="sm" onClick={handleSave} disabled={!isDirty || isSaving || isDeleting}>
           {isSaving ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
           保存
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleDelete}
+          disabled={isSaving || isDeleting}
+          className="text-destructive hover:text-destructive"
+        >
+          {isDeleting ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+          削除
         </Button>
       </CardContent>
     </Card>
@@ -68,14 +95,16 @@ function StageRow({ stage }: { stage: SalesStage }) {
 
 /**
  * 営業フェーズ管理（設計書 #24）。
- * フェーズの新規作成・削除は提供しない（バックエンドのコメント参照）。
- * 名称・並び順の変更のみ、admin以外は保存時にAPI側(RLS)で弾かれる想定。
+ * 名称・並び順の変更に加え、削除も可能（このフェーズを使用しているクライアントが
+ * いる場合はAPI側で409エラーとなり、フロントではその旨をトーストで表示する）。
+ * フェーズの新規作成はこの画面からは提供しない。
+ * admin以外は保存・削除時にAPI側（RLS）で弾かれる想定。
  */
 export function SalesStagesSettings({ stages }: { stages: SalesStage[] }) {
   return (
     <div className="space-y-2">
       <p className="text-sm text-muted-foreground">
-        営業フェーズの名称・並び順を変更できます。フェーズの追加・削除はこの画面からはできません。
+        営業フェーズの名称・並び順を変更できます。使用されていないフェーズはこの画面から削除できます。
       </p>
       {stages.map((stage) => (
         <StageRow key={stage.id} stage={stage} />

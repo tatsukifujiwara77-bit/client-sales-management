@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { SalesStagesService } from './sales-stages.service.js';
 import { SupabaseRequestService } from '../supabase/supabase-request.service.js';
 
@@ -8,7 +8,7 @@ interface MockResult {
 }
 
 function createBuilderMock(result: MockResult) {
-  const chainMethods = ['select', 'eq', 'order', 'update', 'maybeSingle'] as const;
+  const chainMethods = ['select', 'eq', 'order', 'update', 'delete', 'maybeSingle'] as const;
   const builder: Record<string, unknown> = {};
   for (const method of chainMethods) {
     builder[method] = (..._args: unknown[]) => builder;
@@ -41,5 +41,19 @@ describe('SalesStagesService', () => {
     const service = new SalesStagesService(buildSupabaseRequestServiceMock(builder));
 
     await expect(service.update('missing', { name: '新名称' })).rejects.toThrow(NotFoundException);
+  });
+
+  it('removes a stage with no clients referencing it', async () => {
+    const builder = createBuilderMock({ data: null, error: null });
+    const service = new SalesStagesService(buildSupabaseRequestServiceMock(builder));
+
+    await expect(service.remove('stage-1')).resolves.toBeUndefined();
+  });
+
+  it('throws a friendly ConflictException when clients still reference the stage (FK violation)', async () => {
+    const builder = createBuilderMock({ data: null, error: { code: '23503', message: 'fk violation' } });
+    const service = new SalesStagesService(buildSupabaseRequestServiceMock(builder));
+
+    await expect(service.remove('stage-1')).rejects.toThrow(ConflictException);
   });
 });
