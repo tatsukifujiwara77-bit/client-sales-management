@@ -1,5 +1,5 @@
-import { Star, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ContactsSection } from './contacts-section';
 import { formatDateSlash } from '@/lib/domain-labels';
 import type { ClientContact, ClientDetail } from '@/lib/api/types';
 
@@ -78,30 +78,7 @@ export function OverviewTab({
           <CardTitle>重要人物</CardTitle>
         </CardHeader>
         <CardContent>
-          {contacts.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">登録された連絡先はありません</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {contacts.map((contact) => (
-                <div key={contact.id} className="flex items-start gap-3 rounded-md border border-border p-3">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                    <User className="size-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-1 text-sm font-medium text-foreground">
-                      {contact.name}
-                      {contact.isKeyPerson ? <Star className="size-3.5 fill-warning text-warning" /> : null}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {[contact.department, contact.position].filter(Boolean).join(' / ') || '—'}
-                    </p>
-                    {contact.phone ? <p className="text-xs text-muted-foreground">{contact.phone}</p> : null}
-                    {contact.email ? <p className="text-xs text-muted-foreground">{contact.email}</p> : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <ContactsSection clientId={client.id} contacts={contacts} />
         </CardContent>
       </Card>
     </div>
