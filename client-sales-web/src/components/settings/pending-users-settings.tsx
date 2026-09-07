@@ -29,6 +29,14 @@ function PendingUserRow({ user, offices }: { user: PendingUser; offices: Office[
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
 
+  // Base UIのSelectは`items`を渡さないと<SelectValue>が生の value をそのまま表示してしまうため、
+  // value/labelのマッピングを明示的に用意する(client-form.tsx等と同じ対応)。
+  const roleItems = ROLE_OPTIONS.map((option) => ({ value: option, label: USER_ROLE_LABELS[option] }));
+  const officeItems = [
+    { value: NO_OFFICE_VALUE, label: '未割当' },
+    ...offices.map((office) => ({ value: office.id, label: office.name })),
+  ];
+
   async function handleApprove() {
     setIsApproving(true);
     try {
@@ -71,7 +79,7 @@ function PendingUserRow({ user, offices }: { user: PendingUser; offices: Office[
 
         <div className="flex w-40 flex-col gap-1.5">
           <Label>ロール</Label>
-          <Select value={role} onValueChange={(value) => setRole(value as UserRole)}>
+          <Select items={roleItems} value={role} onValueChange={(value) => setRole(value as UserRole)}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -87,7 +95,7 @@ function PendingUserRow({ user, offices }: { user: PendingUser; offices: Office[
 
         <div className="flex w-44 flex-col gap-1.5">
           <Label>拠点</Label>
-          <Select value={officeId} onValueChange={(value) => setOfficeId(value ?? NO_OFFICE_VALUE)}>
+          <Select items={officeItems} value={officeId} onValueChange={(value) => setOfficeId(value ?? NO_OFFICE_VALUE)}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
