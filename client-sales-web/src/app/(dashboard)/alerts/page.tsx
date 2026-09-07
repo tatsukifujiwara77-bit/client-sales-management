@@ -2,8 +2,9 @@ import { serverFetchApi } from '@/lib/api/server';
 import { AlertsSummaryTiles } from '@/components/alerts/alerts-summary-tiles';
 import { AlertsFilterBar } from '@/components/alerts/alerts-filter-bar';
 import { AlertsList } from '@/components/alerts/alerts-list';
+import { RecomputeAlertsButton } from '@/components/alerts/recompute-alerts-button';
 import { PaginationBar } from '@/components/clients/pagination-bar';
-import type { AlertsDashboardResponse, Office } from '@/lib/api/types';
+import type { AlertsDashboardResponse, MeResponse, Office } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
 
@@ -26,14 +27,24 @@ export default async function AlertsPage({ searchParams }: PageProps<'/alerts'>)
   query.set('page', String(page));
   query.set('pageSize', String(PAGE_SIZE));
 
-  const [{ counts, alerts }, offices] = await Promise.all([
+  const [{ counts, alerts }, offices, me] = await Promise.all([
     serverFetchApi<AlertsDashboardResponse>(`/alerts?${query.toString()}`),
     serverFetchApi<Office[]>('/offices'),
+    serverFetchApi<MeResponse>('/me'),
   ]);
 
   return (
     <div className="space-y-4">
-      <AlertsSummaryTiles counts={counts} />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <AlertsSummaryTiles counts={counts} />
+        </div>
+        {me.role === 'admin' ? (
+          <div className="shrink-0">
+            <RecomputeAlertsButton />
+          </div>
+        ) : null}
+      </div>
 
       <AlertsFilterBar offices={offices} />
 
