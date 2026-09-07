@@ -20,16 +20,15 @@ export function ClientsTable({ items }: { items: ClientListItem[] }) {
     <Card>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <Table className="min-w-[64rem]">
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>会社名</TableHead>
-                <TableHead>担当拠点</TableHead>
+                <TableHead className="hidden xl:table-cell">担当拠点</TableHead>
                 <TableHead>担当営業</TableHead>
-                <TableHead>営業フェーズ</TableHead>
-                <TableHead>温度感</TableHead>
+                <TableHead>営業フェーズ / 温度感</TableHead>
                 <TableHead>最終活動日</TableHead>
-                <TableHead>最終訪問日</TableHead>
+                <TableHead className="hidden lg:table-cell">最終訪問日</TableHead>
                 <TableHead>次回アクション</TableHead>
               </TableRow>
             </TableHeader>
@@ -44,7 +43,7 @@ export function ClientsTable({ items }: { items: ClientListItem[] }) {
                       <span className="line-clamp-1 block text-xs text-muted-foreground">{client.address}</span>
                     ) : null}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
+                  <TableCell className="hidden whitespace-nowrap text-muted-foreground xl:table-cell">
                     {client.office?.name ?? '—'}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
@@ -65,15 +64,15 @@ export function ClientsTable({ items }: { items: ClientListItem[] }) {
                     <span className="inline-flex items-center rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
                       {client.salesStage.name}
                     </span>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <span aria-hidden>{TEMPERATURE_EMOJI[client.temperature]}</span>{' '}
-                    <span className="text-muted-foreground">{TEMPERATURE_LABELS[client.temperature]}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      <span aria-hidden>{TEMPERATURE_EMOJI[client.temperature]}</span>{' '}
+                      {TEMPERATURE_LABELS[client.temperature]}
+                    </span>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
                     {client.lastActivityAt ? formatDateSlash(client.lastActivityAt) : '—'}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
+                  <TableCell className="hidden whitespace-nowrap text-muted-foreground lg:table-cell">
                     {client.lastVisitedAt ? formatDateSlash(client.lastVisitedAt) : '—'}
                   </TableCell>
                   <TableCell className="max-w-56">
