@@ -25,6 +25,8 @@ interface ClientFormValues {
   assigneeId: string;
   temperature: Temperature;
   address: string;
+  lat: string;
+  lng: string;
   characteristics: string;
   cautionNotes: string;
 }
@@ -38,6 +40,8 @@ function toFormValues(client: ClientDetail | null): ClientFormValues {
     assigneeId: client?.primaryAssignee?.id ?? NO_ASSIGNEE_VALUE,
     temperature: client?.temperature ?? 'unknown',
     address: client?.address ?? '',
+    lat: client?.lat != null ? String(client.lat) : '',
+    lng: client?.lng != null ? String(client.lng) : '',
     characteristics: client?.characteristics ?? '',
     cautionNotes: client?.cautionNotes ?? '',
   };
@@ -113,6 +117,12 @@ export function ClientForm({ offices, salesStages, users, client = null }: Clien
       toast.error('営業フェーズを選択してください');
       return;
     }
+    const lat = values.lat.trim() ? Number(values.lat) : undefined;
+    const lng = values.lng.trim() ? Number(values.lng) : undefined;
+    if ((lat !== undefined && Number.isNaN(lat)) || (lng !== undefined && Number.isNaN(lng))) {
+      toast.error('緯度・経度は数値で入力してください');
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -123,6 +133,8 @@ export function ClientForm({ offices, salesStages, users, client = null }: Clien
         salesStageId: values.salesStageId,
         temperature: values.temperature,
         address: values.address.trim() || undefined,
+        lat,
+        lng,
         characteristics: values.characteristics.trim() || undefined,
         cautionNotes: values.cautionNotes.trim() || undefined,
       };
@@ -273,6 +285,34 @@ export function ClientForm({ offices, salesStages, users, client = null }: Clien
           placeholder="東京都〇〇区..."
           maxLength={500}
         />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="lat">緯度（地図表示用・任意）</Label>
+          <Input
+            id="lat"
+            type="number"
+            step="any"
+            value={values.lat}
+            onChange={(e) => update('lat', e.target.value)}
+            placeholder="例: 33.590200"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="lng">経度（地図表示用・任意）</Label>
+          <Input
+            id="lng"
+            type="number"
+            step="any"
+            value={values.lng}
+            onChange={(e) => update('lng', e.target.value)}
+            placeholder="例: 130.401700"
+          />
+        </div>
+        <p className="sm:col-span-2 text-xs text-muted-foreground">
+          未入力の場合、地図画面にはこのクライアントのピンが表示されません。現時点では住所からの自動変換(ジオコーディング)機能はないため、地図で正確な位置に表示したい場合はGoogleマップ等で調べた座標をここに手入力してください。
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">
