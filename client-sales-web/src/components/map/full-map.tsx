@@ -153,7 +153,15 @@ export function FullMap({ initialPins, offices, salesStages }: FullMapProps) {
         </Button>
       </div>
 
-      <div className="relative min-h-[28rem] flex-1 overflow-hidden rounded-lg">
+      {/*
+        isolate: Leafletは.leaflet-container自体にはz-indexを設定せず、内部の
+        パネル/コントロールにのみ z-index:200〜1000 を振る。そのままだとこれらが
+        ページのルートのスタッキングコンテキストで、上のフェーズSelectのポータル
+        (z-50, body直下に描画される)より前面に出てしまい、選択肢の後半がマップに
+        隠れてクリックできなくなる。isolateでこのdiv自体を新しいスタッキング
+        コンテキストにし、Leafletの内部z-indexをこの中に閉じ込める。
+      */}
+      <div className="relative isolate min-h-[28rem] flex-1 overflow-hidden rounded-lg">
         <MapContainer center={center} zoom={12} scrollWheelZoom className="size-full">
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
