@@ -21,9 +21,8 @@ export default async function SalesProgressPage({ searchParams }: PageProps<'/sa
     serverFetchApi<Office[]>('/offices'),
   ]);
 
-  // 「契約済み」フェーズ（isClosed=true）はこのKanban盤の対象外（設計書 5章）。
-  // 別途フィルタ済みのクライアント一覧へ遷移するリンクとしてのみ件数を表示する。
-  const openColumns = columns.filter((c) => !c.stage.isClosed);
+  // 「契約済み」フェーズ（isClosed=true）もカンバンの一列として表示する
+  // （以前は完全に除外し、右上のリンクでのみ件数を確認できたため、存在に気づけなかった）。
   const closedColumn = columns.find((c) => c.stage.isClosed);
 
   return (
@@ -36,13 +35,13 @@ export default async function SalesProgressPage({ searchParams }: PageProps<'/sa
             href={`/clients?salesStageId=${closedColumn.stage.id}&isClosed=true`}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline"
           >
-            契約済み: {closedColumn.count}件
+            契約済み: {closedColumn.count}件（一覧で見る）
             <ArrowRight className="size-3.5" />
           </Link>
         ) : null}
       </div>
 
-      <SalesProgressBoard initialColumns={openColumns} />
+      <SalesProgressBoard initialColumns={columns} />
     </div>
   );
 }
