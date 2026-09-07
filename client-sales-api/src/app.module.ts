@@ -28,6 +28,8 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
       isGlobal: true,
       validate: validateEnv,
     }),
+    // AlertsServiceの毎時アラート再計算(recomputeAllOnSchedule)に必要
+    ScheduleModule.forRoot(),
     SupabaseModule,
     HealthModule,
     ClientsModule,

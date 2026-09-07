@@ -1,4 +1,5 @@
 import { Inject, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_SERVICE_ROLE_CLIENT } from '../supabase/supabase.constants.js';
 import { SupabaseRequestService } from '../supabase/supabase-request.service.js';
@@ -211,7 +212,30 @@ export class AlertsService {
     }
   }
 
-  /** 全クライアント分を再計算する（管理者が手動で叩くバッチ相当。STEP18でcron化を想定） */
+  /**
+   * 毎時0分に全クライアント分のアラートを再計算する。
+   *
+   * 背景: alertsテーブルはaction_items/activitiesの書き込み時にのみ差分更新される
+   * キャッシュであり、日付が経過しただけ（例: 「今週期限」に新しく入った）では
+   * 誰も書き込みを行わないため再計算が走らず、実際にはもう該当するはずの
+   * due_today/due_this_week/overdue が/alertsに永久に反映されないままになる
+   * （ダッシュボードや詳細画面はaction_itemsを都度ライブ集計しているため、
+   * この不整合はalerts経由の画面でのみ発生する）。このcronはその「時間経過だけが
+   * トリガーとなる」ケースを埋め合わせるための定期再計算。
+   * SUPABASE_SERVICE_ROLE_KEY未設定の環境（ローカル開発など）では
+   * recomputeAll()が例外を投げるため、ここで捕捉してログのみに留める。
+   */
+  @Cron(CronExpression.EVERY_HOUR)
+  async recomputeAllOnSchedule(): Promise<void> {
+    try {
+      const { clientsProcessed } = await this.recomputeAll();
+      this.logger.log(`Scheduled alert recompute finished for ${clientsProcessed} client(s).`);
+    } catch (err) {
+      this.logger.warn('Skipped scheduled alert recompute', err as Error);
+    }
+  }
+
+  /** 全クライアント分を再計算する（管理者が手動で叩くバッチに加え、毎時のcronからも呼ばれる）。 */
   async recomputeAll(): Promise<{ clientsProcessed: number }> {
     if (!this.serviceRoleClient) {
       throw new InternalServerErrorException(

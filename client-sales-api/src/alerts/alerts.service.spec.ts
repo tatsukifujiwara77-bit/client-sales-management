@@ -101,6 +101,22 @@ describe('AlertsService', () => {
     });
   });
 
+  describe('recomputeAllOnSchedule', () => {
+    it('does not throw even when service_role is not configured (logs and returns instead)', async () => {
+      const service = new AlertsService(buildSupabaseRequestServiceMock(() => ({})), null);
+      await expect(service.recomputeAllOnSchedule()).resolves.toBeUndefined();
+    });
+
+    it('delegates to recomputeAll when service_role is configured', async () => {
+      const service = new AlertsService(buildSupabaseRequestServiceMock(() => ({})), null);
+      const recomputeAllSpy = vi.spyOn(service, 'recomputeAll').mockResolvedValue({ clientsProcessed: 3 });
+
+      await service.recomputeAllOnSchedule();
+
+      expect(recomputeAllSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('list / getCounts', () => {
     it('returns paged alerts scoped to a client when clientId is provided', async () => {
       const alertRow = {
