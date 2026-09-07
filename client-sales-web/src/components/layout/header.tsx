@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, LogOut, Menu, Search } from 'lucide-react';
+import { AlertTriangle, Bell, CalendarClock, Clock, LogOut, Menu, Search, UserCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -18,21 +19,49 @@ import {
 import { Input } from '@/components/ui/input';
 import { findNavItemForPath } from './nav-items';
 import { MobileNav } from './sidebar';
-import type { MeResponse } from '@/lib/api/types';
+import type { AlertCounts, MeResponse } from '@/lib/api/types';
 
 interface HeaderProps {
   user: MeResponse;
   alertCount?: number;
+  alertCounts?: AlertCounts;
+  /** 承認待ちユーザー数。管理者以外にはundefined(通知メニューにも出さない)。 */
+  pendingUsersCount?: number;
 }
 
 function initialsFor(fullName: string): string {
   return fullName.trim().slice(0, 1) || '?';
 }
 
-export function Header({ user, alertCount }: HeaderProps) {
+function NotificationRow({
+  icon: Icon,
+  label,
+  count,
+  href,
+}: {
+  icon: typeof Bell;
+  label: string;
+  count: number;
+  href: string;
+}) {
+  return (
+    <DropdownMenuItem render={<Link href={href} />} className="justify-between">
+      <span className="flex items-center gap-1.5">
+        <Icon className="size-4 text-muted-foreground" />
+        {label}
+      </span>
+      <Badge variant="destructive" className="h-5 min-w-5 justify-center rounded-full px-1.5">
+        {count}
+      </Badge>
+    </DropdownMenuItem>
+  );
+}
+
+export function Header({ user, alertCount, alertCounts, pendingUsersCount }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const notificationTotal = (alertCount ?? 0) + (pendingUsersCount ?? 0);
 
   const title = findNavItemForPath(pathname)?.label ?? 'クライアント営業管理';
 
@@ -66,22 +95,72 @@ export function Header({ user, alertCount }: HeaderProps) {
           />
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative ml-auto rounded-full md:ml-0"
-          aria-label="通知"
-        >
-          <Bell className="size-5" />
-          {alertCount ? (
-            <Badge
-              variant="destructive"
-              className="absolute -top-0.5 -right-0.5 h-4.5 min-w-4.5 justify-center rounded-full px-1 text-[10px]"
-            >
-              {alertCount}
-            </Badge>
-          ) : null}
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={<Button variant="ghost" size="icon" className="relative ml-auto rounded-full md:ml-0" />}
+            aria-label="通知"
+          >
+            <Bell className="size-5" />
+            {notificationTotal ? (
+              <Badge
+                variant="destructive"
+                className="absolute -top-0.5 -right-0.5 h-4.5 min-w-4.5 justify-center rounded-full px-1 text-[10px]"
+              >
+                {notificationTotal}
+              </Badge>
+            ) : null}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuLabel className="font-normal text-muted-foreground">通知</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {notificationTotal === 0 ? (
+              <p className="px-1.5 py-3 text-center text-sm text-muted-foreground">新しい通知はありません</p>
+            ) : (
+              <>
+                {alertCounts?.overdue ? (
+                  <NotificationRow
+                    icon={AlertTriangle}
+                    label="次回アクション期限超過"
+                    count={alertCounts.overdue}
+                    href="/alerts?alertType=overdue"
+                  />
+                ) : null}
+                {alertCounts?.dueToday ? (
+                  <NotificationRow
+                    icon={Clock}
+                    label="今日が期限のアクション"
+                    count={alertCounts.dueToday}
+                    href="/alerts?alertType=due_today"
+                  />
+                ) : null}
+                {alertCounts?.dueThisWeek ? (
+                  <NotificationRow
+                    icon={CalendarClock}
+                    label="今週期限のアクション"
+                    count={alertCounts.dueThisWeek}
+                    href="/alerts?alertType=due_this_week"
+                  />
+                ) : null}
+                {alertCounts?.noVisit ? (
+                  <NotificationRow
+                    icon={AlertTriangle}
+                    label="3ヶ月訪問なしクライアント"
+                    count={alertCounts.noVisit}
+                    href="/alerts?alertType=no_visit"
+                  />
+                ) : null}
+                {pendingUsersCount ? (
+                  <NotificationRow
+                    icon={UserCheck}
+                    label="承認待ちユーザー"
+                    count={pendingUsersCount}
+                    href="/settings"
+                  />
+                ) : null}
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-3 rounded-full px-2 py-1 transition-colors hover:bg-accent">
