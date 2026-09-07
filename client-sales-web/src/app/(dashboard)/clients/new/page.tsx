@@ -2,12 +2,13 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { serverFetchApi } from '@/lib/api/server';
 import { ClientForm } from '@/components/clients/client-form';
-import type { Office, SalesStage } from '@/lib/api/types';
+import type { Office, SalesStage, UserSummary } from '@/lib/api/types';
 
 export default async function NewClientPage() {
-  const [offices, salesStages] = await Promise.all([
+  const [offices, salesStages, users] = await Promise.all([
     serverFetchApi<Office[]>('/offices'),
     serverFetchApi<SalesStage[]>('/sales-stages'),
+    serverFetchApi<UserSummary[]>('/users'),
   ]);
 
   return (
@@ -17,7 +18,7 @@ export default async function NewClientPage() {
         クライアント一覧へ戻る
       </Link>
       <h1 className="text-xl font-semibold text-foreground">新規クライアント登録</h1>
-      <ClientForm offices={offices} salesStages={salesStages} />
+      <ClientForm offices={offices} salesStages={salesStages} users={users} />
     </div>
   );
 }

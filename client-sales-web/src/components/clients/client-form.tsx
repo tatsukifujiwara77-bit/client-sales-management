@@ -12,15 +12,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { clientFetchApi } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
 import { TEMPERATURE_LABELS } from '@/lib/domain-labels';
-import type { ClientDetail, Office, SalesStage, Temperature } from '@/lib/api/types';
+import type { ClientDetail, Office, SalesStage, Temperature, UserSummary } from '@/lib/api/types';
 
 const TEMPERATURE_VALUES: Temperature[] = ['high', 'medium', 'low', 'unknown'];
+const NO_ASSIGNEE_VALUE = '__unassigned__';
 
 interface ClientFormValues {
   companyName: string;
   websiteUrl: string;
   officeId: string;
   salesStageId: string;
+  assigneeId: string;
   temperature: Temperature;
   address: string;
   characteristics: string;
@@ -33,6 +35,7 @@ function toFormValues(client: ClientDetail | null): ClientFormValues {
     websiteUrl: client?.websiteUrl ?? '',
     officeId: client?.office?.id ?? '',
     salesStageId: client?.salesStage.id ?? '',
+    assigneeId: client?.primaryAssignee?.id ?? NO_ASSIGNEE_VALUE,
     temperature: client?.temperature ?? 'unknown',
     address: client?.address ?? '',
     characteristics: client?.characteristics ?? '',
@@ -43,6 +46,7 @@ function toFormValues(client: ClientDetail | null): ClientFormValues {
 interface ClientFormProps {
   offices: Office[];
   salesStages: SalesStage[];
+  users: UserSummary[];
   /** 編集時は既存のクライアント、新規登録時はnull */
   client?: ClientDetail | null;
 }
@@ -51,8 +55,12 @@ interface ClientFormProps {
  * クライアントの新規登録・編集フォーム（共通コンポーネント）。
  * 緯度経度・開拓者・失注理由は設計上任意項目のためv1のフォームからは省略している
  * （必要になったら詳細画面から個別に編集できるようにする）。
+ *
+ * 担当営業(担当割り当て)はclients本体のカラムではなくclient_assignments経由の別APIのため、
+ * 会社名等の通常フィールドとは別に、クライアント保存が成功した後に続けて
+ * assign/unassignを呼ぶ形で反映する(新規登録時は作成直後のidを使って割り当てる)。
  */
-export function ClientForm({ offices, salesStages, client = null }: ClientFormProps) {
+export function ClientForm({ offices, salesStages, users, client = null }: ClientFormProps) {
   const router = useRouter();
   const isEditing = client !== null;
   const [values, setValues] = useState<ClientFormValues>(toFormValues(client));
@@ -67,6 +75,28 @@ export function ClientForm({ offices, salesStages, client = null }: ClientFormPr
   const officeItems = offices.map((o) => ({ value: o.id, label: o.name }));
   const stageItems = salesStages.map((s) => ({ value: s.id, label: s.name }));
   const temperatureItems = TEMPERATURE_VALUES.map((t) => ({ value: t, label: TEMPERATURE_LABELS[t] }));
+  const assigneeItems = [
+    { value: NO_ASSIGNEE_VALUE, label: '未割当' },
+    ...users.map((u) => ({ value: u.id, label: u.fullName })),
+  ];
+
+  /** 担当営業の割り当てをclient_assignments APIへ反映する(変更があった場合のみ)。 */
+  async function syncAssignee(clientId: string) {
+    const previousAssigneeId = client?.primaryAssignee?.id ?? null;
+    const nextAssigneeId = values.assigneeId === NO_ASSIGNEE_VALUE ? null : values.assigneeId;
+    if (previousAssigneeId === nextAssigneeId) {
+      return;
+    }
+
+    if (nextAssigneeId) {
+      await clientFetchApi(`/clients/${clientId}/assignments`, {
+        method: 'POST',
+        body: { userId: nextAssigneeId, isPrimary: true },
+      });
+    } else if (previousAssigneeId) {
+      await clientFetchApi(`/clients/${clientId}/assignments/${previousAssigneeId}`, { method: 'DELETE' });
+    }
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -97,15 +127,25 @@ export function ClientForm({ offices, salesStages, client = null }: ClientFormPr
         cautionNotes: values.cautionNotes.trim() || undefined,
       };
 
+      const clientId = isEditing
+        ? client.id
+        : (await clientFetchApi<{ id: string }>('/clients', { method: 'POST', body })).id;
       if (isEditing) {
-        await clientFetchApi(`/clients/${client.id}`, { method: 'PATCH', body });
-        toast.success('クライアント情報を更新しました');
-        router.push(`/clients/${client.id}`);
-      } else {
-        const created = await clientFetchApi<{ id: string }>('/clients', { method: 'POST', body });
-        toast.success('クライアントを登録しました');
-        router.push(`/clients/${created.id}`);
+        await clientFetchApi(`/clients/${clientId}`, { method: 'PATCH', body });
       }
+
+      try {
+        await syncAssignee(clientId);
+      } catch (assigneeError) {
+        toast.error(
+          assigneeError instanceof ApiError
+            ? `クライアント情報は保存されましたが、担当営業の更新に失敗しました: ${assigneeError.message}`
+            : 'クライアント情報は保存されましたが、担当営業の更新に失敗しました',
+        );
+      }
+
+      toast.success(isEditing ? 'クライアント情報を更新しました' : 'クライアントを登録しました');
+      router.push(`/clients/${clientId}`);
       router.refresh();
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : '保存に失敗しました');
@@ -184,6 +224,26 @@ export function ClientForm({ offices, salesStages, client = null }: ClientFormPr
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
+          <Label>担当営業</Label>
+          <Select
+            items={assigneeItems}
+            value={values.assigneeId}
+            onValueChange={(v) => update('assigneeId', v ?? NO_ASSIGNEE_VALUE)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {assigneeItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
           <Label>温度感</Label>
           <Select
             items={temperatureItems}
@@ -202,17 +262,17 @@ export function ClientForm({ offices, salesStages, client = null }: ClientFormPr
             </SelectContent>
           </Select>
         </div>
+      </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="address">所在地</Label>
-          <Input
-            id="address"
-            value={values.address}
-            onChange={(e) => update('address', e.target.value)}
-            placeholder="東京都〇〇区..."
-            maxLength={500}
-          />
-        </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="address">所在地</Label>
+        <Input
+          id="address"
+          value={values.address}
+          onChange={(e) => update('address', e.target.value)}
+          placeholder="東京都〇〇区..."
+          maxLength={500}
+        />
       </div>
 
       <div className="flex flex-col gap-1.5">
