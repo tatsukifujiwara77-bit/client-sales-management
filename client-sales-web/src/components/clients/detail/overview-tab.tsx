@@ -12,6 +12,11 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+/** websiteUrlはプロトコル省略入力(例: example.co.jp)も許容しているため、リンク化時に補う */
+function toHref(url: string): string {
+  return /^https?:\/\//.test(url) ? url : `https://${url}`;
+}
+
 export function OverviewTab({
   client,
   contacts,
@@ -26,6 +31,23 @@ export function OverviewTab({
           <CardTitle>会社基本情報</CardTitle>
         </CardHeader>
         <CardContent className="divide-y divide-border">
+          <InfoRow
+            label="ホームページ"
+            value={
+              client.websiteUrl ? (
+                <a
+                  href={toHref(client.websiteUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {client.websiteUrl}
+                </a>
+              ) : (
+                '—'
+              )
+            }
+          />
           <InfoRow label="担当拠点" value={client.office?.name ?? '—'} />
           <InfoRow label="担当営業" value={client.primaryAssignee?.fullName ?? '未割当'} />
           <InfoRow label="開拓者" value={client.discoveredBy?.fullName ?? '—'} />

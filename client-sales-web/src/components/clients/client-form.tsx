@@ -18,6 +18,7 @@ const TEMPERATURE_VALUES: Temperature[] = ['high', 'medium', 'low', 'unknown'];
 
 interface ClientFormValues {
   companyName: string;
+  websiteUrl: string;
   officeId: string;
   salesStageId: string;
   temperature: Temperature;
@@ -29,6 +30,7 @@ interface ClientFormValues {
 function toFormValues(client: ClientDetail | null): ClientFormValues {
   return {
     companyName: client?.companyName ?? '',
+    websiteUrl: client?.websiteUrl ?? '',
     officeId: client?.office?.id ?? '',
     salesStageId: client?.salesStage.id ?? '',
     temperature: client?.temperature ?? 'unknown',
@@ -86,6 +88,7 @@ export function ClientForm({ offices, salesStages, client = null }: ClientFormPr
     try {
       const body = {
         companyName: values.companyName.trim(),
+        websiteUrl: values.websiteUrl.trim() || undefined,
         officeId: values.officeId,
         salesStageId: values.salesStageId,
         temperature: values.temperature,
@@ -122,6 +125,18 @@ export function ClientForm({ offices, salesStages, client = null }: ClientFormPr
           placeholder="株式会社〇〇"
           maxLength={200}
           required
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="websiteUrl">ホームページURL</Label>
+        <Input
+          id="websiteUrl"
+          type="url"
+          value={values.websiteUrl}
+          onChange={(e) => update('websiteUrl', e.target.value)}
+          placeholder="https://example.co.jp"
+          maxLength={500}
         />
       </div>
 

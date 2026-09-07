@@ -203,6 +203,7 @@ export interface ClientAssignmentItem {
 export interface ClientDetail extends ClientListItem {
   lat: number | null;
   lng: number | null;
+  websiteUrl: string | null;
   characteristics: string | null;
   cautionNotes: string | null;
   discoveredBy: UserRef | null;

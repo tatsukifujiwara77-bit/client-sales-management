@@ -39,7 +39,7 @@ const LIST_COLUMNS =
 
 const DETAIL_COLUMNS =
   'id, company_name, temperature, address, last_visited_at, last_activity_at, updated_at, ' +
-  'lat, lng, characteristics, caution_notes, created_at, created_by, updated_by, ' +
+  'lat, lng, website_url, characteristics, caution_notes, created_at, created_by, updated_by, ' +
   'office:offices(id, name), ' +
   'sales_stage:sales_stages!inner(id, name, is_closed), ' +
   'loss_reason:loss_reasons(id, name), ' +
@@ -248,6 +248,7 @@ export class ClientsService {
       address: dto.address,
       lat: dto.lat,
       lng: dto.lng,
+      website_url: dto.websiteUrl,
       characteristics: dto.characteristics,
       caution_notes: dto.cautionNotes,
       discovered_by: dto.discoveredBy ?? currentUser.id,
@@ -277,6 +278,7 @@ export class ClientsService {
     if (dto.address !== undefined) updateRow.address = dto.address;
     if (dto.lat !== undefined) updateRow.lat = dto.lat;
     if (dto.lng !== undefined) updateRow.lng = dto.lng;
+    if (dto.websiteUrl !== undefined) updateRow.website_url = dto.websiteUrl;
     if (dto.characteristics !== undefined) updateRow.characteristics = dto.characteristics;
     if (dto.cautionNotes !== undefined) updateRow.caution_notes = dto.cautionNotes;
     if (dto.discoveredBy !== undefined) updateRow.discovered_by = dto.discoveredBy;

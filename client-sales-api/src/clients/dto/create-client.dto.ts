@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUrl,
   IsUUID,
   MaxLength,
 } from 'class-validator';
@@ -25,6 +26,12 @@ export class CreateClientDto {
   @IsNotEmpty()
   @MaxLength(200)
   companyName!: string;
+
+  /** ホームページURL。https://等のプロトコル省略も許容する（例: example.co.jp） */
+  @IsOptional()
+  @IsUrl({ require_protocol: false })
+  @MaxLength(500)
+  websiteUrl?: string;
 
   @IsUUID()
   officeId!: string;

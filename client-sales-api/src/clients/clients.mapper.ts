@@ -55,6 +55,7 @@ export function mapClientDetailRow(row: RawClientDetailRow): ClientDetail {
     ...listItem,
     lat: row.lat,
     lng: row.lng,
+    websiteUrl: row.website_url,
     characteristics: row.characteristics,
     cautionNotes: row.caution_notes,
     discoveredBy: row.discovered_by_profile

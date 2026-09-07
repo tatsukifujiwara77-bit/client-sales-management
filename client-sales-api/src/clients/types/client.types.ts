@@ -51,6 +51,7 @@ export interface ClientListItem {
 export interface ClientDetail extends ClientListItem {
   lat: number | null;
   lng: number | null;
+  websiteUrl: string | null;
   characteristics: string | null;
   cautionNotes: string | null;
   discoveredBy: UserRef | null;
@@ -106,6 +107,7 @@ export interface RawClientListRow {
 export interface RawClientDetailRow extends RawClientListRow {
   lat: number | null;
   lng: number | null;
+  website_url: string | null;
   characteristics: string | null;
   caution_notes: string | null;
   loss_reason: RawLossReasonEmbed | null;
