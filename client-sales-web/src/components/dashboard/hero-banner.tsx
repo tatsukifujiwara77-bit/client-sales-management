@@ -236,7 +236,7 @@ export function HeroBanner({ userName, weeklyVisitCount }: HeroBannerProps) {
         {/* 左エリア: 挨拶・メインメッセージ・サブメッセージ */}
         <div className="min-w-0">
           <p
-            className={`${heroGreetingFont.className} relative inline-block text-[8.6cqw] leading-none text-white drop-shadow-[0_1px_8px_rgba(30,58,138,0.3)]`}
+            className={`${heroGreetingFont.className} relative inline-block text-[8.6cqw] leading-none text-white/85 drop-shadow-[0_1px_8px_rgba(30,58,138,0.3)]`}
           >
             Hello!
             <SparkleAccent />
