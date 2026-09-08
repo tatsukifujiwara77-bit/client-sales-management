@@ -145,7 +145,7 @@ export function MobileNav({
 }: SidebarProps & { open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="relative w-64 overflow-hidden border-none bg-sidebar p-0 text-sidebar-foreground">
+      <SheetContent side="left" className="w-64 overflow-hidden border-none bg-sidebar p-0 text-sidebar-foreground">
         <SheetTitle className="sr-only">メニュー</SheetTitle>
         <SidebarGlow />
         <div className="relative z-10 flex h-full flex-col">
