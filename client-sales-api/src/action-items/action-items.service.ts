@@ -2,7 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { SupabaseRequestService } from '../supabase/supabase-request.service.js';
 import { ActivitiesService } from '../activities/activities.service.js';
 import { AlertsService } from '../alerts/alerts.service.js';
-import { endOfWeekDateString } from '../alerts/date.util.js';
+import { endOfWeekDateString, todayDateString } from '../alerts/date.util.js';
 import { throwIfSupabaseError } from '../common/supabase/supabase-error.util.js';
 import type { AuthUser } from '../common/types/authenticated-request.js';
 import type { PagedResult } from '../common/types/paged-result.js';
@@ -27,10 +27,6 @@ const COLUMNS =
   'id, client_id, source_activity_id, content, due_date, notify_before, status, completed_at, ' +
   'completed_activity_id, created_at, updated_at, ' +
   'assignee:profiles!action_items_assigned_to_fkey(id, full_name)';
-
-function todayDateString(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 @Injectable()
 export class ActionItemsService {

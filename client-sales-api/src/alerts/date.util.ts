@@ -7,8 +7,18 @@
 
 export type DueDateBucket = 'overdue' | 'due_today' | 'due_this_week';
 
+/**
+ * 「今日」の日付文字列(JST基準)を返す。
+ *
+ * 以前は new Date().toISOString().slice(0, 10) でUTC基準の日付を使っていたが、
+ * サーバーはUTCで動作しているため、JSTで日付が変わってからUTCが追いつくまでの
+ * 毎日00:00〜09:00(JST)の間、「今日」が実際より1日古く判定されてしまっていた
+ * (例: 期限日が前日で未対応の次回アクションが、本来「次回アクション期限超過」に
+ * なるべきところ「今日が期限のアクション」のままになる)。このアプリの利用者は
+ * 全員日本国内のため、JST基準で「今日」を求める。
+ */
 export function todayDateString(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date());
 }
 
 /** 今週の終わり(日曜日)を 'YYYY-MM-DD' で返す */

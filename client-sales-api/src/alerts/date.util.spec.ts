@@ -1,6 +1,30 @@
-import { classifyDueDate, daysBetween, endOfWeekDateString } from './date.util.js';
+import { classifyDueDate, daysBetween, endOfWeekDateString, todayDateString } from './date.util.js';
 
 describe('date.util', () => {
+  describe('todayDateString', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('returns the JST calendar date, not the (one-day-behind) UTC date, in the early-morning JST window', () => {
+      // 2026-09-07T20:00:00Z = 2026-09-08 05:00 JST。
+      // 以前の実装(UTC基準)だとここで '2026-09-07' を返してしまい、
+      // 期限日が前日の未対応アクションが「今日が期限」のまま(本来は期限超過)になっていた。
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-09-07T20:00:00.000Z'));
+
+      expect(todayDateString()).toBe('2026-09-08');
+    });
+
+    it('still matches the UTC date once both timezones have rolled over to the same day', () => {
+      // 2026-09-08T10:00:00Z = 2026-09-08 19:00 JST(両者ともすでに9/8)
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-09-08T10:00:00.000Z'));
+
+      expect(todayDateString()).toBe('2026-09-08');
+    });
+  });
+
   describe('classifyDueDate', () => {
     it('classifies a past date as overdue', () => {
       expect(classifyDueDate('2026-05-19', '2026-05-20')).toBe('overdue');
