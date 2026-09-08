@@ -6,7 +6,8 @@ import type { CreateClientNoteDto } from './dto/create-client-note.dto.js';
 import type { UpdateClientNoteDto } from './dto/update-client-note.dto.js';
 import { mapClientNoteRow, type ClientNote, type RawClientNoteRow } from './client-notes.types.js';
 
-const COLUMNS = 'id, client_id, content, created_at, updated_at, created_by, updated_by';
+const COLUMNS =
+  'id, client_id, meeting_type, participants_own, participants_client, content, created_at, updated_at, created_by, updated_by';
 
 @Injectable()
 export class ClientNotesService {
@@ -45,6 +46,9 @@ export class ClientNotesService {
       .from('client_notes')
       .insert({
         client_id: clientId,
+        meeting_type: dto.meetingType,
+        participants_own: dto.participantsOwn,
+        participants_client: dto.participantsClient,
         content: dto.content,
         created_by: currentUser.id,
         updated_by: currentUser.id,
@@ -64,6 +68,9 @@ export class ClientNotesService {
   ): Promise<ClientNote> {
     const client = this.supabaseRequestService.getClient();
     const updateRow: Record<string, unknown> = { updated_by: currentUser.id };
+    if (dto.meetingType !== undefined) updateRow.meeting_type = dto.meetingType;
+    if (dto.participantsOwn !== undefined) updateRow.participants_own = dto.participantsOwn;
+    if (dto.participantsClient !== undefined) updateRow.participants_client = dto.participantsClient;
     if (dto.content !== undefined) updateRow.content = dto.content;
 
     const { data, error } = await client

@@ -29,7 +29,7 @@ export function ClientDetailTabs({
     <Tabs defaultValue="overview">
       <TabsList>
         <TabsTrigger value="overview">概要</TabsTrigger>
-        <TabsTrigger value="notes">メモ</TabsTrigger>
+        <TabsTrigger value="notes">商談メモ</TabsTrigger>
         <TabsTrigger value="activities">活動履歴</TabsTrigger>
         <TabsTrigger value="action-items">次回アクション</TabsTrigger>
         <TabsTrigger value="alerts">

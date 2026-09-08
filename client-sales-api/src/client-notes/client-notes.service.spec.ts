@@ -37,6 +37,9 @@ describe('ClientNotesService', () => {
     const rawRow = {
       id: 'note-1',
       client_id: 'client-1',
+      meeting_type: 'visit',
+      participants_own: '藤原',
+      participants_client: '髙江洲様',
       content: '毎年春に定期訪問を希望される',
       created_at: '2026-05-01T00:00:00Z',
       updated_at: '2026-05-01T00:00:00Z',
@@ -46,8 +49,24 @@ describe('ClientNotesService', () => {
     const builder = createBuilderMock({ data: rawRow, error: null });
     const service = new ClientNotesService(buildSupabaseRequestServiceMock(builder));
 
-    const result = await service.create('client-1', { content: '毎年春に定期訪問を希望される' }, currentUser);
-    expect(result).toMatchObject({ id: 'note-1', content: '毎年春に定期訪問を希望される', createdBy: 'user-1' });
+    const result = await service.create(
+      'client-1',
+      {
+        meetingType: 'visit',
+        participantsOwn: '藤原',
+        participantsClient: '髙江洲様',
+        content: '毎年春に定期訪問を希望される',
+      },
+      currentUser,
+    );
+    expect(result).toMatchObject({
+      id: 'note-1',
+      meetingType: 'visit',
+      participantsOwn: '藤原',
+      participantsClient: '髙江洲様',
+      content: '毎年春に定期訪問を希望される',
+      createdBy: 'user-1',
+    });
   });
 
   it('returns null from findLatest when there are no notes yet', async () => {
@@ -64,5 +83,30 @@ describe('ClientNotesService', () => {
     await expect(service.update('client-1', 'missing', { content: '更新' }, currentUser)).rejects.toThrow(
       NotFoundException,
     );
+  });
+
+  it('updates meetingType and participants fields', async () => {
+    const rawRow = {
+      id: 'note-1',
+      client_id: 'client-1',
+      meeting_type: 'online',
+      participants_own: '藤原',
+      participants_client: '田中様',
+      content: '更新後',
+      created_at: '2026-05-01T00:00:00Z',
+      updated_at: '2026-05-02T00:00:00Z',
+      created_by: 'user-1',
+      updated_by: 'user-1',
+    };
+    const builder = createBuilderMock({ data: rawRow, error: null });
+    const service = new ClientNotesService(buildSupabaseRequestServiceMock(builder));
+
+    const result = await service.update(
+      'client-1',
+      'note-1',
+      { meetingType: 'online', participantsOwn: '藤原', participantsClient: '田中様', content: '更新後' },
+      currentUser,
+    );
+    expect(result).toMatchObject({ meetingType: 'online', participantsOwn: '藤原', participantsClient: '田中様' });
   });
 });

@@ -15,6 +15,8 @@ export interface MeResponse {
 
 export type Temperature = 'high' | 'medium' | 'low' | 'unknown';
 export type ActivityType = 'visit' | 'meeting' | 'call' | 'email' | 'online' | 'other';
+/** 商談メモ(client_notes)の実施形式 */
+export type NoteMeetingType = 'visit' | 'online';
 export type AlertType = 'overdue' | 'due_today' | 'due_this_week' | 'no_visit';
 export type AlertStatus = 'open' | 'dismissed' | 'resolved';
 
@@ -231,6 +233,12 @@ export interface ClientContact {
 export interface ClientNote {
   id: string;
   clientId: string;
+  /** 商談の実施形式（訪問／オンライン）。項目追加前の既存メモにはnullが入る。 */
+  meetingType: NoteMeetingType | null;
+  /** 参加者(当社) */
+  participantsOwn: string | null;
+  /** 参加者(先方) */
+  participantsClient: string | null;
   content: string;
   createdAt: string;
   updatedAt: string;

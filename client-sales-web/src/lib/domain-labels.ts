@@ -57,6 +57,14 @@ export const ACTIVITY_TYPE_ICONS: Record<ActivityType, LucideIcon> = {
   other: MoreHorizontal,
 };
 
+/** 商談メモ(client_notes)の実施形式 */
+export type NoteMeetingType = 'visit' | 'online';
+
+export const NOTE_MEETING_TYPE_LABELS: Record<NoteMeetingType, string> = {
+  visit: '訪問',
+  online: 'オンライン',
+};
+
 export type Temperature = 'high' | 'medium' | 'low' | 'unknown';
 
 export const TEMPERATURE_LABELS: Record<Temperature, string> = {
