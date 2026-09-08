@@ -28,7 +28,7 @@ export function PipelineChart({ pipeline }: { pipeline: PipelineStageSummary[] }
   }));
 
   return (
-    <Card className="relative overflow-hidden rounded-tr-[3.25rem] bg-gradient-to-br from-white to-[oklch(0.97_0.015_200)]">
+    <Card className="relative overflow-hidden [mask-image:radial-gradient(white,white)] rounded-tr-[3.25rem] bg-gradient-to-br from-white to-[oklch(0.97_0.015_200)]">
       {/* カード固有の装飾: ドーナツと呼応する同心円のリング（色ウォッシュだけでなく形でも個性を出す） */}
       <div
         aria-hidden

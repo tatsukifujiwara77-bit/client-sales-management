@@ -15,7 +15,7 @@ const COUNT_KEYS: Record<AlertType, keyof AlertCounts> = {
 
 export function AlertsCard({ counts }: { counts: AlertCounts }) {
   return (
-    <Card className="relative overflow-hidden rounded-tr-[3.25rem] bg-gradient-to-br from-white to-[oklch(0.97_0.015_255)]">
+    <Card className="relative overflow-hidden [mask-image:radial-gradient(white,white)] rounded-tr-[3.25rem] bg-gradient-to-br from-white to-[oklch(0.97_0.015_255)]">
       {/* カード固有の装飾: アラートらしい赤〜橙の淡いグロー＋警戒を示す同心円のパルスリング */}
       <div
         aria-hidden

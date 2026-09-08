@@ -18,7 +18,7 @@ export function KpiCard({ icon: Icon, iconClassName, glowClassName, label, unit,
   const isUp = (changePercent ?? 0) >= 0;
 
   return (
-    <Card className="relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-soft-md">
+    <Card className="relative overflow-hidden [mask-image:radial-gradient(white,white)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-soft-md">
       {glowClassName ? (
         <div
           aria-hidden

@@ -11,7 +11,7 @@ import type { ActivityWithClient } from '@/lib/api/types';
 
 export function RecentActivitiesCard({ activities }: { activities: ActivityWithClient[] }) {
   return (
-    <Card className="relative overflow-hidden rounded-br-[3.25rem]">
+    <Card className="relative overflow-hidden [mask-image:radial-gradient(white,white)] rounded-br-[3.25rem]">
       {/* カード固有の装飾: 活動履歴らしいブルーの淡いグロー（左上）＋タイムラインの流れを示す弧（右下、次回アクションカードの左下スウープと対になる） */}
       <div
         aria-hidden

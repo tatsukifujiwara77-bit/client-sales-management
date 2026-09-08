@@ -8,7 +8,7 @@ import type { ActionItemWithClient } from '@/lib/api/types';
 
 export function UpcomingActionsCard({ items }: { items: ActionItemWithClient[] }) {
   return (
-    <Card className="relative overflow-hidden rounded-bl-[3.25rem]">
+    <Card className="relative overflow-hidden [mask-image:radial-gradient(white,white)] rounded-bl-[3.25rem]">
       {/* カード固有の装飾: 予定が入っている時も含めて常に添える紫系の淡いグロー＋カレンダーを思わせる点線のリング */}
       <div
         aria-hidden

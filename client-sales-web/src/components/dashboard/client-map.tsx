@@ -60,7 +60,7 @@ export function ClientMap({ initialPins }: { initialPins: MapClientPin[] }) {
   }
 
   return (
-    <Card className="relative overflow-hidden rounded-bl-[3.25rem] bg-gradient-to-br from-white to-[oklch(0.97_0.015_255)]">
+    <Card className="relative overflow-hidden [mask-image:radial-gradient(white,white)] rounded-bl-[3.25rem] bg-gradient-to-br from-white to-[oklch(0.97_0.015_255)]">
       {/* カード固有の装飾: 地図らしいシアン〜グリーンの淡いグロー＋座標グリッドを思わせるドットパターン */}
       <div
         aria-hidden

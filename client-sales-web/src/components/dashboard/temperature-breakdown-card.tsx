@@ -29,7 +29,7 @@ const ICON_BOX_CLASSES: Record<Temperature, string> = {
 
 export function TemperatureBreakdownCard({ breakdown }: { breakdown: TemperatureBreakdown }) {
   return (
-    <Card className="relative overflow-hidden rounded-tl-[3.25rem]">
+    <Card className="relative overflow-hidden [mask-image:radial-gradient(white,white)] rounded-tl-[3.25rem]">
       {/* カード固有の装飾: 温度感の両端(高=赤・低=青)を示す二色のアーク。パイプラインの右上スウープと対になる左上スウープ */}
       <div
         aria-hidden

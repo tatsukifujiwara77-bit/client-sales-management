@@ -6,7 +6,7 @@ import type { Alert } from '@/lib/api/types';
 
 export function NoVisitClientsCard({ clients }: { clients: Alert[] }) {
   return (
-    <Card className="relative overflow-hidden rounded-tl-[3.25rem]">
+    <Card className="relative overflow-hidden [mask-image:radial-gradient(white,white)] rounded-tl-[3.25rem]">
       {/* カード固有の装飾: 注意喚起を示すアンバー系の淡いグロー＋「時間の経過」を表す大きな透かしの時計アイコン */}
       <div
         aria-hidden
