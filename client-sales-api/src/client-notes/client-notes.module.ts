@@ -3,8 +3,10 @@ import { ClientNotesController } from './client-notes.controller.js';
 import { ClientNotesService } from './client-notes.service.js';
 import { ClientNoteAttachmentsController } from './client-note-attachments.controller.js';
 import { ClientNoteAttachmentsService } from './client-note-attachments.service.js';
+import { ClientActivityCacheModule } from '../common/client-activity-cache/client-activity-cache.module.js';
 
 @Module({
+  imports: [ClientActivityCacheModule],
   controllers: [ClientNotesController, ClientNoteAttachmentsController],
   providers: [ClientNotesService, ClientNoteAttachmentsService],
   exports: [ClientNotesService, ClientNoteAttachmentsService],

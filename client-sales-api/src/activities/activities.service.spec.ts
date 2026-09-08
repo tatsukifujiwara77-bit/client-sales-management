@@ -1,11 +1,13 @@
 import { NotFoundException } from '@nestjs/common';
 import { ActivitiesService } from './activities.service.js';
 import { SupabaseRequestService } from '../supabase/supabase-request.service.js';
-import type { AlertsService } from '../alerts/alerts.service.js';
+import type { ClientActivityCacheService } from '../common/client-activity-cache/client-activity-cache.service.js';
 import type { AuthUser } from '../common/types/authenticated-request.js';
 
-function buildStubAlertsService(): AlertsService {
-  return { recomputeForClient: vi.fn().mockResolvedValue(undefined) } as unknown as AlertsService;
+// clients.last_visited_at / last_activity_at の再計算はClientActivityCacheServiceの
+// 責務(別途spec有り)なので、ここではrefresh()が呼ばれたことだけを確認する。
+function buildStubClientActivityCacheService(): ClientActivityCacheService {
+  return { refresh: vi.fn().mockResolvedValue(undefined) } as unknown as ClientActivityCacheService;
 }
 
 interface MockResult {
@@ -60,45 +62,29 @@ describe('ActivitiesService', () => {
       const activityRow = {
         id: 'activity-1',
         client_id: 'client-1',
-        activity_type: 'meeting',
+        activity_type: 'call',
         activity_date: '2026-05-20',
-        participants: '南国殖産:髙江洲様/当社:藤原',
-        notes: '九州エリアの採用状況について商談',
+        participants: '髙江洲様',
+        notes: '九州エリアの採用状況について電話',
         created_at: '2026-05-20T00:00:00Z',
         updated_at: '2026-05-20T00:00:00Z',
         owner: { id: 'user-1', full_name: '藤原 樹' },
       };
-      const activityBuilder = createBuilderMock({ data: activityRow, error: null }).builder;
-      const cacheBuilder = createBuilderMock({
-        data: { activity_date: '2026-05-20' },
-        error: null,
-      }).builder;
-      const clientsUpdateBuilder = createBuilderMock({ data: null, error: null }).builder;
-
-      // activitiesテーブルは insert 用と cache 再計算用の select の両方で呼ばれるため、
-      // 1回目は insert 用、2回目以降は cache 用の builder を返す。
-      let activitiesCallCount = 0;
-      const fromSpy = vi.fn((table: string) => {
-        if (table === 'activities') {
-          activitiesCallCount += 1;
-          return activitiesCallCount === 1 ? activityBuilder : cacheBuilder;
-        }
-        return clientsUpdateBuilder;
-      });
-
+      const { builder } = createBuilderMock({ data: activityRow, error: null });
       const supabaseRequestService = {
-        getClient: () => ({ from: fromSpy }),
+        getClient: () => ({ from: () => builder }),
       } as unknown as SupabaseRequestService;
-      const service = new ActivitiesService(supabaseRequestService, buildStubAlertsService());
+      const clientActivityCacheService = buildStubClientActivityCacheService();
+      const service = new ActivitiesService(supabaseRequestService, clientActivityCacheService);
 
       const result = await service.create(
         'client-1',
-        { activityType: 'meeting', activityDate: '2026-05-20', notes: '九州エリアの採用状況について商談' },
+        { activityType: 'call', activityDate: '2026-05-20', notes: '九州エリアの採用状況について電話' },
         currentUser,
       );
 
-      expect(result).toMatchObject({ id: 'activity-1', activityType: 'meeting', owner: { fullName: '藤原 樹' } });
-      expect(fromSpy).toHaveBeenCalledWith('clients');
+      expect(result).toMatchObject({ id: 'activity-1', activityType: 'call', owner: { fullName: '藤原 樹' } });
+      expect(clientActivityCacheService.refresh).toHaveBeenCalledWith('client-1');
     });
   });
 
@@ -108,7 +94,7 @@ describe('ActivitiesService', () => {
       const supabaseRequestService = {
         getClient: () => ({ from: () => builder }),
       } as unknown as SupabaseRequestService;
-      const service = new ActivitiesService(supabaseRequestService, buildStubAlertsService());
+      const service = new ActivitiesService(supabaseRequestService, buildStubClientActivityCacheService());
 
       await expect(service.findOne('client-1', 'missing')).rejects.toThrow(NotFoundException);
     });
@@ -120,33 +106,24 @@ describe('ActivitiesService', () => {
       const supabaseRequestService = {
         getClient: () => ({ from: () => builder }),
       } as unknown as SupabaseRequestService;
-      const service = new ActivitiesService(supabaseRequestService, buildStubAlertsService());
+      const service = new ActivitiesService(supabaseRequestService, buildStubClientActivityCacheService());
 
       await expect(service.findLatestForClient('client-1')).resolves.toBeNull();
     });
   });
 
   describe('remove', () => {
-    it('does not throw when the best-effort cache refresh itself fails', async () => {
-      const deleteBuilder = createBuilderMock({ data: null, error: null }).builder;
-      const cacheReadBuilder = createBuilderMock({ data: null, error: { message: 'boom' } }).builder;
-
-      // 最初の from('activities') 呼び出しは delete、以降は失敗するキャッシュ再計算用のselect。
-      let firstCall = true;
-      const fromSpy = vi.fn((table: string) => {
-        if (table === 'activities' && firstCall) {
-          firstCall = false;
-          return deleteBuilder;
-        }
-        return cacheReadBuilder;
-      });
-
+    it('deletes the activity and refreshes the client activity cache', async () => {
+      const { builder } = createBuilderMock({ data: null, error: null });
       const supabaseRequestService = {
-        getClient: () => ({ from: fromSpy }),
+        getClient: () => ({ from: () => builder }),
       } as unknown as SupabaseRequestService;
-      const service = new ActivitiesService(supabaseRequestService, buildStubAlertsService());
+      const clientActivityCacheService = buildStubClientActivityCacheService();
+      const service = new ActivitiesService(supabaseRequestService, clientActivityCacheService);
 
-      await expect(service.remove('client-1', 'activity-1')).resolves.toBeUndefined();
+      await service.remove('client-1', 'activity-1');
+
+      expect(clientActivityCacheService.refresh).toHaveBeenCalledWith('client-1');
     });
   });
 
@@ -163,7 +140,7 @@ describe('ActivitiesService', () => {
       };
       const { builder, calls } = createBuilderMock({ data: [row], error: null });
       const supabaseRequestService = { getClient: () => ({ from: () => builder }) } as unknown as SupabaseRequestService;
-      const service = new ActivitiesService(supabaseRequestService, buildStubAlertsService());
+      const service = new ActivitiesService(supabaseRequestService, buildStubClientActivityCacheService());
 
       const result = await service.findRecentAcrossClients(10);
 
@@ -195,7 +172,7 @@ describe('ActivitiesService', () => {
       };
       const { builder, calls } = createBuilderMock({ data: [row], error: null, count: 1 });
       const supabaseRequestService = { getClient: () => ({ from: () => builder }) } as unknown as SupabaseRequestService;
-      const service = new ActivitiesService(supabaseRequestService, buildStubAlertsService());
+      const service = new ActivitiesService(supabaseRequestService, buildStubClientActivityCacheService());
 
       const result = await service.listAcrossClients({ page: 1, pageSize: 20 });
 
@@ -221,7 +198,7 @@ describe('ActivitiesService', () => {
     it('filters by activityType/clientId/ownerId/date range when provided', async () => {
       const { builder, calls } = createBuilderMock({ data: [], error: null, count: 0 });
       const supabaseRequestService = { getClient: () => ({ from: () => builder }) } as unknown as SupabaseRequestService;
-      const service = new ActivitiesService(supabaseRequestService, buildStubAlertsService());
+      const service = new ActivitiesService(supabaseRequestService, buildStubClientActivityCacheService());
 
       await service.listAcrossClients({
         activityType: 'visit',
@@ -247,7 +224,7 @@ describe('ActivitiesService', () => {
     it('filters by officeId using an inner join on the embedded client', async () => {
       const { builder, calls } = createBuilderMock({ data: [], error: null, count: 0 });
       const supabaseRequestService = { getClient: () => ({ from: () => builder }) } as unknown as SupabaseRequestService;
-      const service = new ActivitiesService(supabaseRequestService, buildStubAlertsService());
+      const service = new ActivitiesService(supabaseRequestService, buildStubClientActivityCacheService());
 
       await service.listAcrossClients({ officeId: 'office-1', page: 1, pageSize: 20 });
 
@@ -268,7 +245,7 @@ describe('ActivitiesService', () => {
       };
       const { builder, calls } = createBuilderMock({ data: [row], error: null });
       const supabaseRequestService = { getClient: () => ({ from: () => builder }) } as unknown as SupabaseRequestService;
-      const service = new ActivitiesService(supabaseRequestService, buildStubAlertsService());
+      const service = new ActivitiesService(supabaseRequestService, buildStubClientActivityCacheService());
 
       await service.findForMeetingReview({ dateFrom: '2026-05-13', dateTo: '2026-05-20', officeId: 'office-1' });
 
@@ -279,7 +256,7 @@ describe('ActivitiesService', () => {
     it('does not filter by office when officeId is omitted', async () => {
       const { builder, calls } = createBuilderMock({ data: [], error: null });
       const supabaseRequestService = { getClient: () => ({ from: () => builder }) } as unknown as SupabaseRequestService;
-      const service = new ActivitiesService(supabaseRequestService, buildStubAlertsService());
+      const service = new ActivitiesService(supabaseRequestService, buildStubClientActivityCacheService());
 
       await service.findForMeetingReview({ dateFrom: '2026-05-13', dateTo: '2026-05-20' });
 

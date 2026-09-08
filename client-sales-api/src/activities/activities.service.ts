@@ -1,6 +1,6 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseRequestService } from '../supabase/supabase-request.service.js';
-import { AlertsService } from '../alerts/alerts.service.js';
+import { ClientActivityCacheService } from '../common/client-activity-cache/client-activity-cache.service.js';
 import { throwIfSupabaseError } from '../common/supabase/supabase-error.util.js';
 import type { AuthUser } from '../common/types/authenticated-request.js';
 import type { PagedResult } from '../common/types/paged-result.js';
@@ -26,11 +26,9 @@ const COLUMNS =
 
 @Injectable()
 export class ActivitiesService {
-  private readonly logger = new Logger(ActivitiesService.name);
-
   constructor(
     private readonly supabaseRequestService: SupabaseRequestService,
-    private readonly alertsService: AlertsService,
+    private readonly clientActivityCacheService: ClientActivityCacheService,
   ) {}
 
   async list(clientId: string, query: ListActivitiesQueryDto): Promise<PagedResult<Activity>> {
@@ -225,7 +223,7 @@ export class ActivitiesService {
       .single();
 
     throwIfSupabaseError(error, { entityName: 'Activity' });
-    await this.refreshClientActivityCache(clientId);
+    await this.clientActivityCacheService.refresh(clientId);
 
     return mapActivityRow(data as unknown as RawActivityRow);
   }
@@ -259,7 +257,7 @@ export class ActivitiesService {
     }
 
     // activity_date/activity_type が変わりうるため、キャッシュを再計算する
-    await this.refreshClientActivityCache(clientId);
+    await this.clientActivityCacheService.refresh(clientId);
 
     return mapActivityRow(data as unknown as RawActivityRow);
   }
@@ -273,67 +271,8 @@ export class ActivitiesService {
       .eq('client_id', clientId);
 
     throwIfSupabaseError(error, { entityName: 'Activity' });
-    await this.refreshClientActivityCache(clientId);
-  }
-
-  /**
-   * clients.last_visited_at / last_activity_at はactivitiesから集計するキャッシュ列。
-   * activityの作成・更新・削除のたびに、そのクライアントの実際の最新値へ再計算する
-   * （「直近が新しければ更新」ではなく毎回全件から再計算することで、
-   *  古い日付での登録・更新・削除のどのケースでも整合性を保つ）。
-   *
-   * このキャッシュ更新自体はベストエフォートとする。RLS上、活動そのものは
-   * 記録できる担当者でも、clients本体の更新条件（拠点一致等）を満たさない
-   * 稀なケースがあり得るため、失敗してもメインの操作（活動の記録）は
-   * 成功として扱い、ログにのみ残す。将来的なアラート再計算バッチ(STEP11、
-   * service_role使用)で最終的な整合性を担保する。
-   */
-  private async refreshClientActivityCache(clientId: string): Promise<void> {
-    const client = this.supabaseRequestService.getClient();
-    try {
-      const [{ data: lastActivity, error: activityError }, { data: lastVisit, error: visitError }] =
-        await Promise.all([
-          client
-            .from('activities')
-            .select('activity_date')
-            .eq('client_id', clientId)
-            .order('activity_date', { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          client
-            .from('activities')
-            .select('activity_date')
-            .eq('client_id', clientId)
-            .eq('activity_type', 'visit')
-            .order('activity_date', { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-        ]);
-
-      if (activityError || visitError) {
-        this.logger.warn(
-          `Failed to read activities while refreshing cache for client ${clientId}: ` +
-            `${activityError?.message ?? visitError?.message}`,
-        );
-        return;
-      }
-
-      const { error: updateError } = await client
-        .from('clients')
-        .update({
-          last_activity_at: (lastActivity as { activity_date: string } | null)?.activity_date ?? null,
-          last_visited_at: (lastVisit as { activity_date: string } | null)?.activity_date ?? null,
-        })
-        .eq('id', clientId);
-
-      if (updateError) {
-        this.logger.warn(`Failed to refresh activity cache for client ${clientId}: ${updateError.message}`);
-      }
-    } catch (err) {
-      this.logger.warn(`Unexpected error refreshing activity cache for client ${clientId}`, err as Error);
-    }
-
-    // last_visited_at が変わりうるため、3ヶ月訪問なしアラートも合わせて再計算する
-    await this.alertsService.recomputeForClient(clientId);
+    // clients.last_visited_at / last_activity_at の再計算はClientActivityCacheServiceの
+    // 責務（client_notesの商談メモ書き込みからも同様に呼ばれるため共通化している）。
+    await this.clientActivityCacheService.refresh(clientId);
   }
 }

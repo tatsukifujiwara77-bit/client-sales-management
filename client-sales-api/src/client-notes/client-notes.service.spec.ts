@@ -1,7 +1,12 @@
 import { NotFoundException } from '@nestjs/common';
 import { ClientNotesService } from './client-notes.service.js';
 import { SupabaseRequestService } from '../supabase/supabase-request.service.js';
+import type { ClientActivityCacheService } from '../common/client-activity-cache/client-activity-cache.service.js';
 import type { AuthUser } from '../common/types/authenticated-request.js';
+
+function buildStubClientActivityCacheService(): ClientActivityCacheService {
+  return { refresh: vi.fn().mockResolvedValue(undefined) } as unknown as ClientActivityCacheService;
+}
 
 interface MockResult {
   data: unknown;
@@ -47,7 +52,7 @@ describe('ClientNotesService', () => {
       updated_by: 'user-1',
     };
     const builder = createBuilderMock({ data: rawRow, error: null });
-    const service = new ClientNotesService(buildSupabaseRequestServiceMock(builder));
+    const service = new ClientNotesService(buildSupabaseRequestServiceMock(builder), buildStubClientActivityCacheService());
 
     const result = await service.create(
       'client-1',
@@ -71,14 +76,14 @@ describe('ClientNotesService', () => {
 
   it('returns null from findLatest when there are no notes yet', async () => {
     const builder = createBuilderMock({ data: null, error: null });
-    const service = new ClientNotesService(buildSupabaseRequestServiceMock(builder));
+    const service = new ClientNotesService(buildSupabaseRequestServiceMock(builder), buildStubClientActivityCacheService());
 
     await expect(service.findLatest('client-1')).resolves.toBeNull();
   });
 
   it('throws NotFoundException when updating a note that does not exist/is not accessible', async () => {
     const builder = createBuilderMock({ data: null, error: null });
-    const service = new ClientNotesService(buildSupabaseRequestServiceMock(builder));
+    const service = new ClientNotesService(buildSupabaseRequestServiceMock(builder), buildStubClientActivityCacheService());
 
     await expect(service.update('client-1', 'missing', { content: '更新' }, currentUser)).rejects.toThrow(
       NotFoundException,
@@ -99,7 +104,7 @@ describe('ClientNotesService', () => {
       updated_by: 'user-1',
     };
     const builder = createBuilderMock({ data: rawRow, error: null });
-    const service = new ClientNotesService(buildSupabaseRequestServiceMock(builder));
+    const service = new ClientNotesService(buildSupabaseRequestServiceMock(builder), buildStubClientActivityCacheService());
 
     const result = await service.update(
       'client-1',
