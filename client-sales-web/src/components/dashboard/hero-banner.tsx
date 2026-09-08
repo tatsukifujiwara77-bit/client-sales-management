@@ -229,7 +229,7 @@ export function HeroBanner({ userName, weeklyVisitCount }: HeroBannerProps) {
   const weekday = WEEKDAY_LABELS_JA[now.getDay()];
 
   return (
-    <div className="@container relative isolate aspect-[3/1] w-full overflow-hidden rounded-[28px]">
+    <div className="@container relative isolate aspect-[3/1] w-full overflow-hidden rounded-[28px] [mask-image:radial-gradient(white,white)]">
       <SkylineBackground />
 
       <div className="relative flex h-full items-center justify-between gap-[3%] px-[4.5%]">
