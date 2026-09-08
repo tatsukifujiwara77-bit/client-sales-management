@@ -24,7 +24,7 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-4">
       {isAdmin ? (
-        <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-foreground">クライアントの座標(地図表示用)を一括更新</p>
             <p className="text-xs text-muted-foreground">

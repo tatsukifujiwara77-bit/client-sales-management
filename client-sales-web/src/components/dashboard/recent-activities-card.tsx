@@ -45,10 +45,13 @@ export function RecentActivitiesCard({ activities }: { activities: ActivityWithC
               return (
               <div
                 key={activity.id}
-                className="group flex items-center gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-muted/60"
+                className="group flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-2 py-3 transition-colors hover:bg-muted/60"
               >
-                {/* タイムラインの軌道＋ドット（履歴らしさを形として表現する装飾） */}
-                <span aria-hidden className="relative flex w-3 shrink-0 items-center justify-center self-stretch">
+                {/* タイムラインの軌道＋ドット（履歴らしさを形として表現する装飾）。狭い画面では場所を取るため非表示。 */}
+                <span
+                  aria-hidden
+                  className="relative hidden w-3 shrink-0 items-center justify-center self-stretch sm:flex"
+                >
                   <span
                     className={`absolute left-1/2 w-px -translate-x-1/2 bg-border ${isFirst ? 'top-1/2' : 'top-0'} ${isLast ? 'bottom-1/2' : 'bottom-0'}`}
                   />
@@ -56,7 +59,7 @@ export function RecentActivitiesCard({ activities }: { activities: ActivityWithC
                     className={`relative z-10 size-1.5 rounded-full ring-2 ring-card ${ACTIVITY_TYPE_DOT_CLASSES[activity.activityType]}`}
                   />
                 </span>
-                <span className="w-16 shrink-0 text-xs text-muted-foreground">
+                <span className="shrink-0 text-xs text-muted-foreground">
                   {formatDateSlash(activity.activityDate)}
                 </span>
                 <span
@@ -64,7 +67,7 @@ export function RecentActivitiesCard({ activities }: { activities: ActivityWithC
                 >
                   {ACTIVITY_TYPE_LABELS[activity.activityType]}
                 </span>
-                <span className="w-28 shrink-0 truncate text-sm font-medium text-foreground">
+                <span className="max-w-32 shrink-0 truncate text-sm font-medium text-foreground sm:max-w-none">
                   {activity.clientName}
                 </span>
                 <span className="hidden min-w-0 flex-1 truncate text-sm text-muted-foreground sm:block">
@@ -73,7 +76,7 @@ export function RecentActivitiesCard({ activities }: { activities: ActivityWithC
                 <span className="hidden shrink-0 text-xs text-muted-foreground md:block">
                   {activity.owner.fullName}
                 </span>
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground/0 transition-all group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
+                <ChevronRight className="hidden size-4 shrink-0 text-muted-foreground/0 transition-all group-hover:translate-x-0.5 group-hover:text-muted-foreground sm:block" />
               </div>
               );
             })}

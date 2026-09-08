@@ -88,7 +88,9 @@ export function Header({ user, alertCount, alertCounts, pendingUsersCount, avata
           <Menu className="size-5" />
         </Button>
 
-        <h1 className="hidden shrink-0 text-lg font-semibold text-foreground md:block">{title}</h1>
+        <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-foreground md:flex-none md:text-lg">
+          {title}
+        </h1>
 
         <div className="relative ml-auto hidden max-w-sm flex-1 md:block">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />

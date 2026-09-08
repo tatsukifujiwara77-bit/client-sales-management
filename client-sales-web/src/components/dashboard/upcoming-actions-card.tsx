@@ -52,15 +52,15 @@ export function UpcomingActionsCard({ items }: { items: ActionItemWithClient[] }
           items.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-muted/60"
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-2 py-3 transition-colors hover:bg-muted/60"
             >
-              <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">
+              <span className="shrink-0 text-xs font-medium text-muted-foreground">
                 {formatDateWithWeekday(item.dueDate)}
               </span>
-              <span className="w-24 shrink-0 truncate text-sm font-medium text-foreground">
+              <span className="max-w-32 shrink-0 truncate text-sm font-medium text-foreground">
                 {item.clientName}
               </span>
-              <span className="flex-1 truncate text-sm text-muted-foreground">{item.content}</span>
+              <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{item.content}</span>
               <Avatar className="size-7 shrink-0">
                 <AvatarFallback className="bg-secondary text-[11px] text-secondary-foreground">
                   {item.assignee.fullName.slice(0, 1)}
