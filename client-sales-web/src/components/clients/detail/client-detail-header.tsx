@@ -16,17 +16,17 @@ const TEMPERATURE_EMOJI: Record<ClientDetail['temperature'], string> = {
 interface ClientDetailHeaderProps {
   client: ClientDetail;
   nextAction: NextActionSummary | null;
-  /** 一覧へ戻るリンク先(クライアント詳細では/clients、営業リスト詳細では/sales-list) */
-  basePath?: string;
-  backLabel?: string;
 }
 
-export function ClientDetailHeader({
-  client,
-  nextAction,
-  basePath = '/clients',
-  backLabel = 'クライアント一覧へ戻る',
-}: ClientDetailHeaderProps) {
+/**
+ * 「戻る」リンク・編集/削除の遷移先は、どのURL(/clients/:id または /sales-list/:id)から
+ * 来たかではなく、そのクライアントの現在の営業フェーズ(契約終了かどうか)から都度判定する。
+ * こうすることで、アラート等どこ経由でこの詳細ページに来ても、常に正しい一覧へ戻れる。
+ */
+export function ClientDetailHeader({ client, nextAction }: ClientDetailHeaderProps) {
+  const basePath = client.salesStage.isClosed ? '/clients' : '/sales-list';
+  const backLabel = client.salesStage.isClosed ? 'クライアント一覧へ戻る' : '営業リストへ戻る';
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
