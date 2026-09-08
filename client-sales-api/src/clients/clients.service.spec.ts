@@ -44,6 +44,7 @@ function createBuilderMock(result: MockResult) {
     'select',
     'eq',
     'or',
+    'not',
     'order',
     'range',
     'limit',
@@ -493,6 +494,31 @@ describe('ClientsService', () => {
       await service.remove('client-1');
 
       expect(calls.eq).toEqual(expect.arrayContaining([['id', 'client-1']]));
+    });
+  });
+
+  describe('backfillGeocoding', () => {
+    it('geocodes each client missing lat/lng and returns how many were actually updated', async () => {
+      const rows = [
+        { id: 'client-1', address: '福岡県福岡市中央区天神2丁目8-35' },
+        { id: 'client-2', address: '存在しない住所' },
+      ];
+      const { builder } = createBuilderMock({ data: rows, error: null });
+      geocodeAddressMock
+        .mockResolvedValueOnce({ lat: 33.59, lng: 130.4 })
+        .mockResolvedValueOnce(null);
+      const service = new ClientsService(
+        buildSupabaseRequestServiceMock(() => builder),
+        buildStubContactsService(),
+        buildStubNotesService(),
+        buildStubActivitiesService(),
+        buildStubActionItemsService(),
+      );
+
+      const result = await service.backfillGeocoding();
+
+      expect(geocodeAddressMock).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({ clientsChecked: 2, clientsUpdated: 1 });
     });
   });
 

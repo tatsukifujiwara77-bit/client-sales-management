@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { ClientsController } from './clients.controller.js';
 import type { ClientsService } from './clients.service.js';
 import type { AuthUser } from '../common/types/authenticated-request.js';
@@ -11,6 +12,8 @@ const currentUser: AuthUser = {
   isActive: true,
 };
 
+const adminUser: AuthUser = { ...currentUser, id: 'admin-1', role: 'admin' };
+
 describe('ClientsController', () => {
   function buildServiceMock(): ClientsService {
     return {
@@ -23,6 +26,7 @@ describe('ClientsController', () => {
       unassign: vi.fn().mockResolvedValue(undefined),
       getPipeline: vi.fn().mockResolvedValue([]),
       remove: vi.fn().mockResolvedValue(undefined),
+      backfillGeocoding: vi.fn().mockResolvedValue({ clientsChecked: 3, clientsUpdated: 2 }),
     } as unknown as ClientsService;
   }
 
@@ -73,5 +77,25 @@ describe('ClientsController', () => {
 
     await controller.unassign('client-1', 'user-2');
     expect(service.unassign).toHaveBeenCalledWith('client-1', 'user-2');
+  });
+
+  describe('backfillGeocoding', () => {
+    it('delegates to the service for an admin user', async () => {
+      const service = buildServiceMock();
+      const controller = new ClientsController(service);
+
+      const result = await controller.backfillGeocoding(adminUser);
+
+      expect(service.backfillGeocoding).toHaveBeenCalledWith();
+      expect(result).toEqual({ clientsChecked: 3, clientsUpdated: 2 });
+    });
+
+    it('throws ForbiddenException for a non-admin user without calling the service', async () => {
+      const service = buildServiceMock();
+      const controller = new ClientsController(service);
+
+      expect(() => controller.backfillGeocoding(currentUser)).toThrow(ForbiddenException);
+      expect(service.backfillGeocoding).not.toHaveBeenCalled();
+    });
   });
 });

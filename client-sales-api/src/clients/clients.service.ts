@@ -332,6 +332,43 @@ export class ClientsService {
     return mapClientDetailRow(data as unknown as RawClientDetailRow);
   }
 
+  /**
+   * 所在地はあるが緯度経度が未設定の既存クライアントを、まとめてジオコーディングする
+   * (管理者限定。create/updateへの自動ジオコーディング導入前に登録されていたデータの
+   * 一括バックフィル用)。1回の呼び出しで最大500件まで処理する。
+   * ベストエフォート: 個々のクライアントの失敗は無視して次に進む。
+   */
+  async backfillGeocoding(): Promise<{ clientsChecked: number; clientsUpdated: number }> {
+    const client = this.supabaseRequestService.getClient();
+
+    const { data, error } = await client
+      .from('clients')
+      .select('id, address')
+      .not('address', 'is', null)
+      .or('lat.is.null,lng.is.null')
+      .limit(500);
+    throwIfSupabaseError(error, { entityName: 'Client' });
+
+    const rows = (data ?? []) as { id: string; address: string | null }[];
+    let clientsUpdated = 0;
+
+    for (const row of rows) {
+      if (!row.address) continue;
+      const geocoded = await geocodeAddress(row.address);
+      if (!geocoded) continue;
+
+      const { error: updateError } = await client
+        .from('clients')
+        .update({ lat: geocoded.lat, lng: geocoded.lng })
+        .eq('id', row.id);
+      if (!updateError) {
+        clientsUpdated += 1;
+      }
+    }
+
+    return { clientsChecked: rows.length, clientsUpdated };
+  }
+
   /** 関連する活動・次回アクション・アラート・担当割り当て等はON DELETE CASCADEで一括削除される。 */
   async remove(id: string): Promise<void> {
     const client = this.supabaseRequestService.getClient();

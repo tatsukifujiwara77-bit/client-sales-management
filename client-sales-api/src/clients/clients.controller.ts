@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -52,6 +53,19 @@ export class ClientsController {
   @Post()
   create(@Body() dto: CreateClientDto, @CurrentUser() user: AuthUser) {
     return this.clientsService.create(dto, user);
+  }
+
+  /**
+   * 既存クライアントの一括ジオコーディング(管理者限定)。':id'ルートとの誤マッチを避けるため、
+   * パラメータ付きルートより前に定義する必要はない(POSTに ':id' 単体のルートが無いため無関係だが、
+   * GETの'pipeline'と同じ理由で固定文字列ルートは早めに書いておく)。
+   */
+  @Post('backfill-geocoding')
+  backfillGeocoding(@CurrentUser() user: AuthUser) {
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Only admins can trigger a geocoding backfill.');
+    }
+    return this.clientsService.backfillGeocoding();
   }
 
   @Patch(':id')
