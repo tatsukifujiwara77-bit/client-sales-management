@@ -25,9 +25,9 @@ import { ACTIVITY_TYPE_LABELS, type ActivityType, type NotifyBefore } from '@/li
 import { ClientPicker, type PickedClient } from './client-picker';
 import type { Activity } from '@/lib/api/types';
 
-// 訪問／商談／オンラインは商談メモ(client_notes)側で記録するため、活動履歴の
-// 種別からは除外し、電話／メール／その他の簡易的な記録に絞る。
-const ACTIVITY_TYPES: ActivityType[] = ['call', 'email', 'other'];
+// 「商談」だけは商談メモ(client_notes)側で詳細を記録する運用のため除外する。
+// 訪問／オンラインは活動履歴側にも残す(商談メモとは別に、簡易的な活動記録として使う)。
+const ACTIVITY_TYPES: ActivityType[] = ['visit', 'online', 'call', 'email', 'other'];
 const ACTIVITY_TYPE_ITEMS = ACTIVITY_TYPES.map((type) => ({ value: type, label: ACTIVITY_TYPE_LABELS[type] }));
 
 function todayDateString(): string {
@@ -45,14 +45,14 @@ export function AddActivityGlobalDialog() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [client, setClient] = useState<PickedClient | null>(null);
-  const [activityType, setActivityType] = useState<ActivityType>('call');
+  const [activityType, setActivityType] = useState<ActivityType>('visit');
   const [showNextAction, setShowNextAction] = useState(false);
   const [nextActionNotifyBefore, setNextActionNotifyBefore] = useState<NotifyBefore>('none');
 
   function resetAndClose() {
     setOpen(false);
     setClient(null);
-    setActivityType('call');
+    setActivityType('visit');
     setErrorMessage(null);
     setShowNextAction(false);
     setNextActionNotifyBefore('none');
@@ -118,7 +118,7 @@ export function AddActivityGlobalDialog() {
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>営業活動を記録</DialogTitle>
-            <DialogDescription>クライアントを選んで、電話・メールなどの活動内容を簡易的に記録します。</DialogDescription>
+            <DialogDescription>クライアントを選んで、訪問・電話などの活動内容を簡易的に記録します。</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-4 py-4">

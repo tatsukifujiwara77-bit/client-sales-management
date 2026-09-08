@@ -49,7 +49,7 @@ export function ClientDetailTabs({
         <NotesTab clientId={client.id} notes={notes} />
       </TabsContent>
       <TabsContent value="activities" className="mt-4">
-        <ActivitiesTab clientId={client.id} activities={activities} />
+        <ActivitiesTab clientId={client.id} activities={activities} notes={notes} />
       </TabsContent>
       <TabsContent value="action-items" className="mt-4">
         <ActionItemsTab clientId={client.id} actionItems={actionItems} />

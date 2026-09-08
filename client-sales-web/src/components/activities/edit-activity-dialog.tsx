@@ -21,11 +21,11 @@ import { ApiError } from '@/lib/api/errors';
 import { ACTIVITY_TYPE_LABELS, type ActivityType } from '@/lib/domain-labels';
 import type { Activity } from '@/lib/api/types';
 
-// 訪問／商談／オンラインは商談メモ(client_notes)側で記録する運用に変更したため、
-// 新規に選べる種別は電話／メール／その他のみ。ただし過去にこれらの種別で
-// 記録された活動を編集する際に選択肢から消えてしまわないよう、編集中の値が
-// この3種に含まれない場合はその値も選択肢に追加する（buildActivityTypeItems）。
-const ACTIVITY_TYPES: ActivityType[] = ['call', 'email', 'other'];
+// 「商談」だけは商談メモ(client_notes)側で詳細を記録する運用に変更したため、
+// 新規に選べる種別から除外する。ただし過去に「商談」種別で記録された活動を
+// 編集する際に選択肢から消えてしまわないよう、編集中の値がこの一覧に
+// 含まれない場合はその値も選択肢に追加する（buildActivityTypeItems）。
+const ACTIVITY_TYPES: ActivityType[] = ['visit', 'online', 'call', 'email', 'other'];
 
 function buildActivityTypeItems(currentType: ActivityType) {
   const types = ACTIVITY_TYPES.includes(currentType) ? ACTIVITY_TYPES : [currentType, ...ACTIVITY_TYPES];
