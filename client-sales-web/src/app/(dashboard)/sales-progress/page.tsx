@@ -32,10 +32,10 @@ export default async function SalesProgressPage({ searchParams }: PageProps<'/sa
 
         {closedColumn ? (
           <Link
-            href={`/clients?salesStageId=${closedColumn.stage.id}&isClosed=true`}
+            href="/clients"
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline"
           >
-            契約済み: {closedColumn.count}件（一覧で見る）
+            契約済み: {closedColumn.count}件（クライアント一覧で見る）
             <ArrowRight className="size-3.5" />
           </Link>
         ) : null}

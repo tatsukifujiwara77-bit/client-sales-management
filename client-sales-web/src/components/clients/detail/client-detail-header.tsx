@@ -13,15 +13,28 @@ const TEMPERATURE_EMOJI: Record<ClientDetail['temperature'], string> = {
   unknown: '⚪',
 };
 
-export function ClientDetailHeader({ client, nextAction }: { client: ClientDetail; nextAction: NextActionSummary | null }) {
+interface ClientDetailHeaderProps {
+  client: ClientDetail;
+  nextAction: NextActionSummary | null;
+  /** 一覧へ戻るリンク先(クライアント詳細では/clients、営業リスト詳細では/sales-list) */
+  basePath?: string;
+  backLabel?: string;
+}
+
+export function ClientDetailHeader({
+  client,
+  nextAction,
+  basePath = '/clients',
+  backLabel = 'クライアント一覧へ戻る',
+}: ClientDetailHeaderProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <Link href="/clients" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <Link href={basePath} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-4" />
-          クライアント一覧へ戻る
+          {backLabel}
         </Link>
-        <ClientDetailActions clientId={client.id} companyName={client.companyName} />
+        <ClientDetailActions clientId={client.id} companyName={client.companyName} basePath={basePath} />
       </div>
 
       <div className="rounded-lg border border-border bg-card p-5">

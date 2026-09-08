@@ -53,6 +53,12 @@ interface ClientFormProps {
   users: UserSummary[];
   /** 編集時は既存のクライアント、新規登録時はnull */
   client?: ClientDetail | null;
+  /**
+   * 保存後の遷移先の基準パス(営業リストでは/sales-list、クライアントでは/clients)。
+   * ただし選択した営業フェーズが契約終了(isClosed)の場合は、basePathに関わらず
+   * 常に/clientsへ遷移する(営業リスト→クライアントへの「卒業」を自動で反映するため)。
+   */
+  basePath?: string;
 }
 
 /**
@@ -64,7 +70,7 @@ interface ClientFormProps {
  * 会社名等の通常フィールドとは別に、クライアント保存が成功した後に続けて
  * assign/unassignを呼ぶ形で反映する(新規登録時は作成直後のidを使って割り当てる)。
  */
-export function ClientForm({ offices, salesStages, users, client = null }: ClientFormProps) {
+export function ClientForm({ offices, salesStages, users, client = null, basePath = '/clients' }: ClientFormProps) {
   const router = useRouter();
   const isEditing = client !== null;
   const [values, setValues] = useState<ClientFormValues>(toFormValues(client));
@@ -157,7 +163,11 @@ export function ClientForm({ offices, salesStages, users, client = null }: Clien
       }
 
       toast.success(isEditing ? 'クライアント情報を更新しました' : 'クライアントを登録しました');
-      router.push(`/clients/${clientId}`);
+      // 選択した営業フェーズが契約終了(isClosed)なら、basePathに関わらず/clientsへ
+      // (営業リストからクライアントへの「卒業」を、保存と同時に自動で反映する)。
+      const selectedStage = salesStages.find((s) => s.id === values.salesStageId);
+      const destinationBasePath = selectedStage?.isClosed ? '/clients' : basePath;
+      router.push(`${destinationBasePath}/${clientId}`);
       router.refresh();
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : '保存に失敗しました');

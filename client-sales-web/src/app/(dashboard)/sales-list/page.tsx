@@ -1,4 +1,7 @@
+import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import { serverFetchApi } from '@/lib/api/server';
+import { Button } from '@/components/ui/button';
 import { ClientsFilterBar } from '@/components/clients/clients-filter-bar';
 import { ClientsTable } from '@/components/clients/clients-table';
 import { PaginationBar } from '@/components/clients/pagination-bar';
@@ -11,11 +14,11 @@ function toSingle(value: string | string[] | undefined): string | undefined {
 }
 
 /**
- * クライアント一覧。契約終了(isClosed)になった案件のみを表示する
- * (契約前の見込み客は/sales-listで管理し、契約終了で自動的にこちらへ「卒業」する設計のため、
- * ここは常にisClosed=trueを強制する。新規登録もここからは行わず、必ず営業リスト経由)。
+ * 営業リスト(契約前の見込み客)。/clientsとは逆に、常にisClosed=falseを強制する
+ * (契約終了になった時点でクライアント一覧側へ「卒業」する設計のため、
+ * ここには契約終了フェーズの案件は表示しない)。
  */
-export default async function ClientsPage({ searchParams }: PageProps<'/clients'>) {
+export default async function SalesListPage({ searchParams }: PageProps<'/sales-list'>) {
   const params = await searchParams;
 
   const query = new URLSearchParams();
@@ -31,28 +34,39 @@ export default async function ClientsPage({ searchParams }: PageProps<'/clients'
   if (assignedTo) query.set('assignedTo', assignedTo);
   if (salesStageId) query.set('salesStageId', salesStageId);
   if (temperature) query.set('temperature', temperature);
-  query.set('isClosed', 'true');
+  query.set('isClosed', 'false');
   query.set('page', String(page));
   query.set('pageSize', String(PAGE_SIZE));
 
-  const [clients, offices, salesStages, users] = await Promise.all([
+  const [list, offices, salesStages, users] = await Promise.all([
     serverFetchApi<PagedResult<ClientListItem>>(`/clients?${query.toString()}`),
     serverFetchApi<Office[]>('/offices'),
     serverFetchApi<SalesStage[]>('/sales-stages'),
     serverFetchApi<UserSummary[]>('/users'),
   ]);
 
-  // クライアント一覧は契約終了フェーズのみなので、フェーズ選択肢もそれだけに絞る
-  // (未接触・商談中等を選んでも常に0件になってしまう組み合わせを避ける)。
-  const closedSalesStages = salesStages.filter((s) => s.isClosed);
+  // このリストに契約終了フェーズは出ないため、フェーズ選択肢からも除いておく
+  // (選んでも常に0件になってしまう組み合わせを避ける)。
+  const openSalesStages = salesStages.filter((s) => !s.isClosed);
 
   return (
     <div className="space-y-4">
-      <ClientsFilterBar offices={offices} salesStages={closedSalesStages} users={users} />
+      <div className="flex items-center justify-end">
+        <Button size="sm" nativeButton={false} render={<Link href="/sales-list/new" />}>
+          <Plus className="size-4" />
+          新規リスト登録
+        </Button>
+      </div>
 
-      <ClientsTable items={clients.items} basePath="/clients" />
+      <ClientsFilterBar offices={offices} salesStages={openSalesStages} users={users} />
 
-      <PaginationBar page={clients.page} pageSize={clients.pageSize} total={clients.total} />
+      <ClientsTable
+        items={list.items}
+        basePath="/sales-list"
+        emptyMessage="条件に一致する見込み客が見つかりませんでした"
+      />
+
+      <PaginationBar page={list.page} pageSize={list.pageSize} total={list.total} />
     </div>
   );
 }

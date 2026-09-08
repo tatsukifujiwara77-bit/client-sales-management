@@ -33,7 +33,9 @@ export function NoVisitClientsCard({ clients }: { clients: Alert[] }) {
             {clients.map((alert) => (
               <Link
                 key={alert.id}
-                href={`/clients/${alert.clientId}`}
+                // 3ヶ月訪問なしアラートは設計上「契約終了でないクライアント」にのみ立つため、
+                // 常に営業リスト側の詳細ページへ遷移する。
+                href={`/sales-list/${alert.clientId}`}
                 className="flex items-start gap-3 rounded-xl border border-border/70 p-3 transition-all duration-150 hover:-translate-y-0.5 hover:border-transparent hover:bg-muted/60 hover:shadow-soft"
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">

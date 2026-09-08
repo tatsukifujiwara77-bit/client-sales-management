@@ -32,7 +32,12 @@ export function SalesProgressCard({ client, isPending, isOverlay }: SalesProgres
       {...(isOverlay ? {} : attributes)}
       // activationConstraint(8px)により、ドラッグにならなかった通常のクリックはここまで到達する。
       // カードをクリックすると詳細ページへ遷移する(そちらで編集・削除ができる)。
-      onClick={isOverlay ? undefined : () => router.push(`/clients/${client.id}`)}
+      // 契約終了(isClosed)前は営業リスト、契約終了後はクライアント一覧の詳細ページへ。
+      onClick={
+        isOverlay
+          ? undefined
+          : () => router.push(`${client.salesStage.isClosed ? '/clients' : '/sales-list'}/${client.id}`)
+      }
       style={!isOverlay && transform ? { transform: CSS.Translate.toString(transform) } : undefined}
       className={cn(
         'relative touch-none rounded-lg border border-border bg-card p-3 shadow-sm select-none',

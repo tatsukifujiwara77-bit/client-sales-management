@@ -5,13 +5,22 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatDateSlash, TEMPERATURE_EMOJI, TEMPERATURE_LABELS } from '@/lib/domain-labels';
 import type { ClientListItem } from '@/lib/api/types';
 
-export function ClientsTable({ items }: { items: ClientListItem[] }) {
+interface ClientsTableProps {
+  items: ClientListItem[];
+  /** 各行のリンク先(クライアント一覧では/clients、営業リストでは/sales-list) */
+  basePath?: string;
+  emptyMessage?: string;
+}
+
+export function ClientsTable({
+  items,
+  basePath = '/clients',
+  emptyMessage = '条件に一致するクライアントが見つかりませんでした',
+}: ClientsTableProps) {
   if (items.length === 0) {
     return (
       <Card className="border-dashed">
-        <CardContent className="py-16 text-center text-sm text-muted-foreground">
-          条件に一致するクライアントが見つかりませんでした
-        </CardContent>
+        <CardContent className="py-16 text-center text-sm text-muted-foreground">{emptyMessage}</CardContent>
       </Card>
     );
   }
@@ -36,7 +45,7 @@ export function ClientsTable({ items }: { items: ClientListItem[] }) {
               {items.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell className="max-w-52">
-                    <Link href={`/clients/${client.id}`} className="font-medium text-foreground hover:underline">
+                    <Link href={`${basePath}/${client.id}`} className="font-medium text-foreground hover:underline">
                       <span className="line-clamp-1">{client.companyName}</span>
                     </Link>
                     {client.address ? (

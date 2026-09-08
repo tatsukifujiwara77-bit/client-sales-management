@@ -63,7 +63,7 @@ export function TemperatureBreakdownCard({ breakdown }: { breakdown: Temperature
           return (
             <Link
               key={temperature}
-              href="/clients"
+              href="/sales-list"
               className={cnRow(hasClients ? ROW_ACTIVE_CLASSES[temperature] : ROW_IDLE_CLASSES)}
             >
               <span className={boxClass(ICON_BOX_CLASSES[temperature])}>
@@ -80,10 +80,10 @@ export function TemperatureBreakdownCard({ breakdown }: { breakdown: Temperature
       </CardContent>
       <div className="border-t border-border px-6 py-3">
         <Link
-          href="/clients"
+          href="/sales-list"
           className="flex items-center justify-end gap-1 text-xs font-medium text-primary hover:underline"
         >
-          クライアント一覧へ
+          営業リストへ
           <ChevronRight className="size-3.5" />
         </Link>
       </div>

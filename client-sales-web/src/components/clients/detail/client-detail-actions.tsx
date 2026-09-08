@@ -10,7 +10,15 @@ import { clientFetchApi } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
 
 /** クライアント詳細ヘッダーの編集・削除ボタン（削除はRLS上adminのみ実行可能）。 */
-export function ClientDetailActions({ clientId, companyName }: { clientId: string; companyName: string }) {
+export function ClientDetailActions({
+  clientId,
+  companyName,
+  basePath = '/clients',
+}: {
+  clientId: string;
+  companyName: string;
+  basePath?: string;
+}) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -22,7 +30,7 @@ export function ClientDetailActions({ clientId, companyName }: { clientId: strin
     try {
       await clientFetchApi(`/clients/${clientId}`, { method: 'DELETE' });
       toast.success(`${companyName} を削除しました`);
-      router.push('/clients');
+      router.push(basePath);
       router.refresh();
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : '削除に失敗しました');
@@ -32,7 +40,7 @@ export function ClientDetailActions({ clientId, companyName }: { clientId: strin
 
   return (
     <div className="flex items-center gap-2">
-      <Button size="sm" variant="outline" nativeButton={false} render={<Link href={`/clients/${clientId}/edit`} />}>
+      <Button size="sm" variant="outline" nativeButton={false} render={<Link href={`${basePath}/${clientId}/edit`} />}>
         <Pencil className="size-3.5" />
         編集
       </Button>

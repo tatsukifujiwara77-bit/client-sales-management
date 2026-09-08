@@ -4,7 +4,7 @@ import { serverFetchApi } from '@/lib/api/server';
 import { ClientForm } from '@/components/clients/client-form';
 import type { Office, SalesStage, UserSummary } from '@/lib/api/types';
 
-export default async function NewClientPage() {
+export default async function NewSalesListEntryPage() {
   const [offices, salesStages, users] = await Promise.all([
     serverFetchApi<Office[]>('/offices'),
     serverFetchApi<SalesStage[]>('/sales-stages'),
@@ -13,12 +13,15 @@ export default async function NewClientPage() {
 
   return (
     <div className="space-y-3">
-      <Link href="/clients" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link
+        href="/sales-list"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="size-4" />
-        クライアント一覧へ戻る
+        営業リストへ戻る
       </Link>
-      <h1 className="text-xl font-semibold text-foreground">新規クライアント登録</h1>
-      <ClientForm offices={offices} salesStages={salesStages} users={users} />
+      <h1 className="text-xl font-semibold text-foreground">新規リスト登録</h1>
+      <ClientForm offices={offices} salesStages={salesStages} users={users} basePath="/sales-list" />
     </div>
   );
 }
