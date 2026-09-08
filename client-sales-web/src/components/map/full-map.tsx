@@ -3,23 +3,17 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import 'leaflet/dist/leaflet.css';
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import type { LatLngBounds } from 'leaflet';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { clientFetchApi } from '@/lib/api/client';
+import { createClientPinIcon } from '@/lib/map-pin-icon';
 import { TEMPERATURE_LABELS, type Temperature } from '@/lib/domain-labels';
 import type { MapClientPin, Office, SalesStage } from '@/lib/api/types';
 
 const ALL = '__all__';
-
-const TEMPERATURE_MARKER_COLOR: Record<Temperature, string> = {
-  high: 'var(--color-destructive)',
-  medium: 'var(--color-warning)',
-  low: 'var(--color-info)',
-  unknown: 'var(--color-muted-foreground)',
-};
 
 const FUKUOKA_CENTER: [number, number] = [33.5902, 130.4017];
 
@@ -168,17 +162,7 @@ export function FullMap({ initialPins, offices, salesStages }: FullMapProps) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {pins.map((pin) => (
-            <CircleMarker
-              key={pin.id}
-              center={[pin.lat, pin.lng]}
-              radius={9}
-              pathOptions={{
-                color: 'white',
-                weight: 2,
-                fillColor: TEMPERATURE_MARKER_COLOR[pin.temperature],
-                fillOpacity: 0.9,
-              }}
-            >
+            <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={createClientPinIcon(pin.temperature)}>
               <Popup>
                 <div className="flex min-w-40 flex-col gap-1">
                   <p className="font-semibold text-foreground">{pin.companyName}</p>
@@ -186,12 +170,15 @@ export function FullMap({ initialPins, offices, salesStages }: FullMapProps) {
                   <p className="text-xs text-muted-foreground">
                     {pin.salesStage.name} ・ {TEMPERATURE_LABELS[pin.temperature]}
                   </p>
-                  <Link href={`/clients/${pin.id}`} className="text-xs font-medium text-primary hover:underline">
-                    クライアント詳細を見る →
+                  <Link
+                    href={`${pin.salesStage.isClosed ? '/clients' : '/sales-list'}/${pin.id}`}
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    詳細を見る →
                   </Link>
                 </div>
               </Popup>
-            </CircleMarker>
+            </Marker>
           ))}
           <SearchThisAreaButton onSearch={search} />
         </MapContainer>

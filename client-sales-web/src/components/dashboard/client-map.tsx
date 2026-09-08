@@ -3,19 +3,13 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import 'leaflet/dist/leaflet.css';
-import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Tooltip, useMap } from 'react-leaflet';
 import type { LatLngBounds } from 'leaflet';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { clientFetchApi } from '@/lib/api/client';
+import { createClientPinIcon } from '@/lib/map-pin-icon';
 import type { MapClientPin } from '@/lib/api/types';
-
-const TEMPERATURE_MARKER_COLOR: Record<MapClientPin['temperature'], string> = {
-  high: 'var(--color-destructive)',
-  medium: 'var(--color-warning)',
-  low: 'var(--color-info)',
-  unknown: 'var(--color-muted-foreground)',
-};
 
 const FUKUOKA_CENTER: [number, number] = [33.5902, 130.4017];
 
@@ -94,19 +88,9 @@ export function ClientMap({ initialPins }: { initialPins: MapClientPin[] }) {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             {pins.map((pin) => (
-              <CircleMarker
-                key={pin.id}
-                center={[pin.lat, pin.lng]}
-                radius={8}
-                pathOptions={{
-                  color: 'white',
-                  weight: 2,
-                  fillColor: TEMPERATURE_MARKER_COLOR[pin.temperature],
-                  fillOpacity: 0.9,
-                }}
-              >
+              <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={createClientPinIcon(pin.temperature)}>
                 <Tooltip>{pin.companyName}</Tooltip>
-              </CircleMarker>
+              </Marker>
             ))}
             <SearchThisAreaButton onSearch={handleSearchThisArea} />
           </MapContainer>
