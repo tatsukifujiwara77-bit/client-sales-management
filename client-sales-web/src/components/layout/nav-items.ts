@@ -24,7 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/activities', label: '営業活動', icon: Activity },
   { href: '/sales-list', label: '営業リスト', icon: ClipboardList },
   { href: '/alerts', label: 'アラート', icon: Bell },
-  { href: '/map', label: '地図', icon: Map },
+  { href: '/map', label: 'クライアントマップ', icon: Map },
   { href: '/settings', label: '設定', icon: Settings },
 ];
 
