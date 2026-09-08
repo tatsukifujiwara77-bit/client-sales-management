@@ -41,7 +41,7 @@ export function ActivitiesTab({ clientId, activities }: { clientId: string; acti
                       </div>
                     </div>
                     {activity.participants ? (
-                      <p className="text-xs text-muted-foreground">参加者: {activity.participants}</p>
+                      <p className="text-xs text-muted-foreground">先方: {activity.participants}</p>
                     ) : null}
                     {activity.notes ? (
                       <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{activity.notes}</p>

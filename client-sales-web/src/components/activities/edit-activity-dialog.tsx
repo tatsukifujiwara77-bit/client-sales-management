@@ -21,8 +21,16 @@ import { ApiError } from '@/lib/api/errors';
 import { ACTIVITY_TYPE_LABELS, type ActivityType } from '@/lib/domain-labels';
 import type { Activity } from '@/lib/api/types';
 
-const ACTIVITY_TYPES: ActivityType[] = ['visit', 'meeting', 'call', 'email', 'online', 'other'];
-const ACTIVITY_TYPE_ITEMS = ACTIVITY_TYPES.map((type) => ({ value: type, label: ACTIVITY_TYPE_LABELS[type] }));
+// 訪問／商談／オンラインは商談メモ(client_notes)側で記録する運用に変更したため、
+// 新規に選べる種別は電話／メール／その他のみ。ただし過去にこれらの種別で
+// 記録された活動を編集する際に選択肢から消えてしまわないよう、編集中の値が
+// この3種に含まれない場合はその値も選択肢に追加する（buildActivityTypeItems）。
+const ACTIVITY_TYPES: ActivityType[] = ['call', 'email', 'other'];
+
+function buildActivityTypeItems(currentType: ActivityType) {
+  const types = ACTIVITY_TYPES.includes(currentType) ? ACTIVITY_TYPES : [currentType, ...ACTIVITY_TYPES];
+  return types.map((type) => ({ value: type, label: ACTIVITY_TYPE_LABELS[type] }));
+}
 
 // participantsは任意: クライアント横断の活動一覧(ActivityWithClient)にはこの項目が含まれないため、
 // そちらから編集する場合は空欄から入力する形になる(既存値を空欄のまま保存しても上書きはされない)。
@@ -43,6 +51,7 @@ export function EditActivityDialog({ clientId, activity, open, onOpenChange }: E
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activityType, setActivityType] = useState<ActivityType>(activity.activityType);
+  const activityTypeItems = buildActivityTypeItems(activity.activityType);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -82,7 +91,7 @@ export function EditActivityDialog({ clientId, activity, open, onOpenChange }: E
             <div className="flex flex-col gap-1.5">
               <Label>活動種別</Label>
               <Select
-                items={ACTIVITY_TYPE_ITEMS}
+                items={activityTypeItems}
                 value={activityType}
                 onValueChange={(v) => setActivityType(v as ActivityType)}
               >
@@ -90,7 +99,7 @@ export function EditActivityDialog({ clientId, activity, open, onOpenChange }: E
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ACTIVITY_TYPE_ITEMS.map((item) => (
+                  {activityTypeItems.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
                       {item.label}
                     </SelectItem>
@@ -111,17 +120,17 @@ export function EditActivityDialog({ clientId, activity, open, onOpenChange }: E
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`participants-${activity.id}`}>参加者</Label>
+              <Label htmlFor={`participants-${activity.id}`}>先方</Label>
               <Input
                 id={`participants-${activity.id}`}
                 name="participants"
                 defaultValue={activity.participants ?? ''}
-                placeholder="例: 先方 髙江洲様 / 当社 藤原"
+                placeholder="例: 髙江洲様"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`notes-${activity.id}`}>商談メモ</Label>
+              <Label htmlFor={`notes-${activity.id}`}>メモ</Label>
               <Textarea id={`notes-${activity.id}`} name="notes" rows={5} defaultValue={activity.notes ?? ''} />
             </div>
 

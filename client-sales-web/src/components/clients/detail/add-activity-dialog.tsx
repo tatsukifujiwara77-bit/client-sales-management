@@ -22,10 +22,11 @@ import { NextActionFields } from '@/components/activities/next-action-fields';
 import { clientFetchApi } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
 import { ACTIVITY_TYPE_LABELS, type ActivityType, type NotifyBefore } from '@/lib/domain-labels';
-import { CLIENT_NOTE_TEMPLATE } from '@/lib/note-template';
 import type { Activity } from '@/lib/api/types';
 
-const ACTIVITY_TYPES: ActivityType[] = ['visit', 'meeting', 'call', 'email', 'online', 'other'];
+// 訪問／商談／オンラインは商談メモ(client_notes)側で記録するため、活動履歴の
+// 種別からは除外し、電話／メール／その他の簡易的な記録に絞る。
+const ACTIVITY_TYPES: ActivityType[] = ['call', 'email', 'other'];
 const ACTIVITY_TYPE_ITEMS = ACTIVITY_TYPES.map((type) => ({ value: type, label: ACTIVITY_TYPE_LABELS[type] }));
 
 function todayDateString(): string {
@@ -37,7 +38,7 @@ export function AddActivityDialog({ clientId }: { clientId: string }) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [activityType, setActivityType] = useState<ActivityType>('visit');
+  const [activityType, setActivityType] = useState<ActivityType>('call');
   const [showNextAction, setShowNextAction] = useState(false);
   const [nextActionNotifyBefore, setNextActionNotifyBefore] = useState<NotifyBefore>('none');
 
@@ -97,7 +98,7 @@ export function AddActivityDialog({ clientId }: { clientId: string }) {
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>営業活動を記録</DialogTitle>
-            <DialogDescription>訪問・商談・電話などの活動内容を記録します。</DialogDescription>
+            <DialogDescription>電話・メールなどの活動内容を簡易的に記録します。</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-4 py-4">
@@ -127,19 +128,13 @@ export function AddActivityDialog({ clientId }: { clientId: string }) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="participants">参加者</Label>
-              <Input id="participants" name="participants" placeholder="例: 先方 髙江洲様 / 当社 藤原" />
+              <Label htmlFor="participants">先方</Label>
+              <Input id="participants" name="participants" placeholder="例: 髙江洲様" />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="notes">商談メモ</Label>
-              <Textarea
-                id="notes"
-                name="notes"
-                rows={16}
-                className="font-mono text-sm"
-                defaultValue={CLIENT_NOTE_TEMPLATE}
-              />
+              <Label htmlFor="notes">メモ</Label>
+              <Textarea id="notes" name="notes" rows={5} />
             </div>
 
             <NextActionFields
