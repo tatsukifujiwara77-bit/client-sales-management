@@ -44,10 +44,9 @@ function NavList({ alertCount, onNavigate }: { alertCount?: number; onNavigate?:
             <span className="flex-1">{item.label}</span>
             {item.href === '/alerts' && alertCount ? (
               <Badge
-                variant="destructive"
                 className={cn(
-                  'h-5 min-w-5 justify-center rounded-full px-1 text-xs',
-                  isActive && 'bg-white/25 text-white',
+                  'h-5 min-w-5 justify-center rounded-full px-1 text-xs font-semibold',
+                  isActive ? 'bg-white text-[oklch(0.55_0.22_25)]' : 'bg-[oklch(0.6_0.22_25)] text-white',
                 )}
               >
                 {alertCount}
