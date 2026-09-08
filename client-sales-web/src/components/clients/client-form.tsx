@@ -299,7 +299,7 @@ export function ClientForm({ offices, salesStages, users, client = null, basePat
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="lat">緯度（地図表示用・任意）</Label>
+          <Label htmlFor="lat">緯度（地図表示用・通常は空欄でOK）</Label>
           <Input
             id="lat"
             type="number"
@@ -310,7 +310,7 @@ export function ClientForm({ offices, salesStages, users, client = null, basePat
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="lng">経度（地図表示用・任意）</Label>
+          <Label htmlFor="lng">経度（地図表示用・通常は空欄でOK）</Label>
           <Input
             id="lng"
             type="number"
@@ -321,7 +321,7 @@ export function ClientForm({ offices, salesStages, users, client = null, basePat
           />
         </div>
         <p className="sm:col-span-2 text-xs text-muted-foreground">
-          未入力の場合、地図画面にはこのクライアントのピンが表示されません。現時点では住所からの自動変換(ジオコーディング)機能はないため、地図で正確な位置に表示したい場合はGoogleマップ等で調べた座標をここに手入力してください。
+          所在地を入力して保存すると、自動で座標を調べて地図に反映します（国土地理院の住所検索を利用）。ピンの位置がずれる場合や、より正確な位置を指定したい場合のみ、ここに座標を直接入力してください（入力した場合はそちらが優先されます）。
         </p>
       </div>
 

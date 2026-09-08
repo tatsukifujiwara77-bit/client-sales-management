@@ -1,6 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
 import { ClientsService } from './clients.service.js';
 import { SupabaseRequestService } from '../supabase/supabase-request.service.js';
+
+const geocodeAddressMock = vi.fn();
+vi.mock('./geocoding.util.js', () => ({
+  geocodeAddress: (...args: unknown[]) => geocodeAddressMock(...args),
+}));
 import type { ClientContactsService } from '../client-contacts/client-contacts.service.js';
 import type { ClientNotesService } from '../client-notes/client-notes.service.js';
 import type { ActivitiesService } from '../activities/activities.service.js';
@@ -80,6 +85,10 @@ const currentUser: AuthUser = {
 };
 
 describe('ClientsService', () => {
+  beforeEach(() => {
+    geocodeAddressMock.mockReset();
+  });
+
   describe('list', () => {
     it('applies filters, search, sort and pagination, and maps rows', async () => {
       const rawRow = {
@@ -288,6 +297,111 @@ describe('ClientsService', () => {
       expect(insertedRow.updated_by).toBe('user-1');
       expect(calls.single).toHaveLength(1);
     });
+
+    it('geocodes the address automatically when lat/lng are not provided', async () => {
+      const rawRow = {
+        id: 'client-1',
+        company_name: '株式会社ABC',
+        temperature: 'unknown',
+        address: '福岡県福岡市中央区天神2丁目8-35',
+        last_visited_at: null,
+        last_activity_at: null,
+        updated_at: '2026-05-20T00:00:00Z',
+        lat: 33.5902,
+        lng: 130.4017,
+        characteristics: null,
+        caution_notes: null,
+        created_at: '2026-05-20T00:00:00Z',
+        created_by: 'user-1',
+        updated_by: 'user-1',
+        office: null,
+        sales_stage: { id: 'stage-1', name: '未接触', is_closed: false },
+        loss_reason: null,
+        discovered_by_profile: { id: 'user-1', full_name: '藤原 樹' },
+        assignments: [],
+      };
+      const { builder } = createBuilderMock({ data: rawRow, error: null });
+      let insertedRow: any;
+      builder.insert = (row: unknown) => {
+        insertedRow = row;
+        return builder;
+      };
+      geocodeAddressMock.mockResolvedValueOnce({ lat: 33.5902, lng: 130.4017 });
+      const service = new ClientsService(
+        buildSupabaseRequestServiceMock(() => builder),
+        buildStubContactsService(),
+        buildStubNotesService(),
+        buildStubActivitiesService(),
+        buildStubActionItemsService(),
+      );
+
+      await service.create(
+        {
+          companyName: '株式会社ABC',
+          officeId: 'office-1',
+          salesStageId: 'stage-1',
+          address: '福岡県福岡市中央区天神2丁目8-35',
+        },
+        currentUser,
+      );
+
+      expect(geocodeAddressMock).toHaveBeenCalledWith('福岡県福岡市中央区天神2丁目8-35');
+      expect(insertedRow.lat).toBe(33.5902);
+      expect(insertedRow.lng).toBe(130.4017);
+    });
+
+    it('does not geocode when lat/lng are explicitly provided (manual override wins)', async () => {
+      const rawRow = {
+        id: 'client-1',
+        company_name: '株式会社ABC',
+        temperature: 'unknown',
+        address: '福岡県福岡市中央区天神2丁目8-35',
+        last_visited_at: null,
+        last_activity_at: null,
+        updated_at: '2026-05-20T00:00:00Z',
+        lat: 1,
+        lng: 2,
+        characteristics: null,
+        caution_notes: null,
+        created_at: '2026-05-20T00:00:00Z',
+        created_by: 'user-1',
+        updated_by: 'user-1',
+        office: null,
+        sales_stage: { id: 'stage-1', name: '未接触', is_closed: false },
+        loss_reason: null,
+        discovered_by_profile: { id: 'user-1', full_name: '藤原 樹' },
+        assignments: [],
+      };
+      const { builder } = createBuilderMock({ data: rawRow, error: null });
+      let insertedRow: any;
+      builder.insert = (row: unknown) => {
+        insertedRow = row;
+        return builder;
+      };
+      const service = new ClientsService(
+        buildSupabaseRequestServiceMock(() => builder),
+        buildStubContactsService(),
+        buildStubNotesService(),
+        buildStubActivitiesService(),
+        buildStubActionItemsService(),
+      );
+
+      await service.create(
+        {
+          companyName: '株式会社ABC',
+          officeId: 'office-1',
+          salesStageId: 'stage-1',
+          address: '福岡県福岡市中央区天神2丁目8-35',
+          lat: 1,
+          lng: 2,
+        },
+        currentUser,
+      );
+
+      expect(geocodeAddressMock).not.toHaveBeenCalled();
+      expect(insertedRow.lat).toBe(1);
+      expect(insertedRow.lng).toBe(2);
+    });
   });
 
   describe('update', () => {
@@ -302,6 +416,66 @@ describe('ClientsService', () => {
       );
 
       await expect(service.update('missing', {}, currentUser)).rejects.toThrow(NotFoundException);
+    });
+
+    it('re-geocodes when the address changes and lat/lng are not provided', async () => {
+      const { builder, calls } = createBuilderMock({
+        data: { id: 'client-1', sales_stage: { id: 'stage-1', name: '未接触', is_closed: false } },
+        error: null,
+      });
+      geocodeAddressMock.mockResolvedValueOnce({ lat: 35.6812, lng: 139.7671 });
+      const service = new ClientsService(
+        buildSupabaseRequestServiceMock(() => builder),
+        buildStubContactsService(),
+        buildStubNotesService(),
+        buildStubActivitiesService(),
+        buildStubActionItemsService(),
+      );
+
+      await service.update('client-1', { address: '東京都千代田区丸の内1-1-1' }, currentUser);
+
+      expect(geocodeAddressMock).toHaveBeenCalledWith('東京都千代田区丸の内1-1-1');
+      expect(calls.update).toEqual([
+        [{ updated_by: 'user-1', address: '東京都千代田区丸の内1-1-1', lat: 35.6812, lng: 139.7671 }],
+      ]);
+    });
+
+    it('does not touch lat/lng when the address is not part of the update', async () => {
+      const { builder, calls } = createBuilderMock({
+        data: { id: 'client-1', sales_stage: { id: 'stage-1', name: '未接触', is_closed: false } },
+        error: null,
+      });
+      const service = new ClientsService(
+        buildSupabaseRequestServiceMock(() => builder),
+        buildStubContactsService(),
+        buildStubNotesService(),
+        buildStubActivitiesService(),
+        buildStubActionItemsService(),
+      );
+
+      await service.update('client-1', { temperature: 'high' }, currentUser);
+
+      expect(geocodeAddressMock).not.toHaveBeenCalled();
+      expect(calls.update).toEqual([[{ updated_by: 'user-1', temperature: 'high' }]]);
+    });
+
+    it('applies manually-provided lat/lng directly when address is not changing', async () => {
+      const { builder, calls } = createBuilderMock({
+        data: { id: 'client-1', sales_stage: { id: 'stage-1', name: '未接触', is_closed: false } },
+        error: null,
+      });
+      const service = new ClientsService(
+        buildSupabaseRequestServiceMock(() => builder),
+        buildStubContactsService(),
+        buildStubNotesService(),
+        buildStubActivitiesService(),
+        buildStubActionItemsService(),
+      );
+
+      await service.update('client-1', { lat: 1, lng: 2 }, currentUser);
+
+      expect(geocodeAddressMock).not.toHaveBeenCalled();
+      expect(calls.update).toEqual([[{ updated_by: 'user-1', lat: 1, lng: 2 }]]);
     });
   });
 

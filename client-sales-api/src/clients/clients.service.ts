@@ -13,6 +13,7 @@ import type { ListClientsQueryDto, ClientSortField } from './dto/list-clients-qu
 import type { AssignClientDto } from './dto/assign-client.dto.js';
 import type { PipelineQueryDto } from './dto/pipeline-query.dto.js';
 import { mapClientDetailRow, mapClientListRow } from './clients.mapper.js';
+import { geocodeAddress } from './geocoding.util.js';
 import type {
   ClientAssignmentItem,
   ClientDetail,
@@ -237,8 +238,29 @@ export class ClientsService {
     return mapClientDetailRow(data as unknown as RawClientDetailRow);
   }
 
+  /**
+   * lat/lngが明示的に指定されていれば(手動での座標指定を優先して)そのまま使う。
+   * 指定が無く住所がある場合のみ、国土地理院の住所検索APIで自動的にジオコーディングする。
+   * 該当なし・API失敗時はundefinedのまま返す(保存自体は失敗させず、地図にピンが出ないだけにする)。
+   */
+  private async resolveCoordinates(
+    address: string | undefined,
+    lat: number | undefined,
+    lng: number | undefined,
+  ): Promise<{ lat: number | undefined; lng: number | undefined }> {
+    if (lat !== undefined || lng !== undefined) {
+      return { lat, lng };
+    }
+    if (!address) {
+      return { lat, lng };
+    }
+    const geocoded = await geocodeAddress(address);
+    return geocoded ? { lat: geocoded.lat, lng: geocoded.lng } : { lat, lng };
+  }
+
   async create(dto: CreateClientDto, currentUser: AuthUser): Promise<ClientDetail> {
     const client = this.supabaseRequestService.getClient();
+    const { lat, lng } = await this.resolveCoordinates(dto.address, dto.lat, dto.lng);
 
     const insertRow = {
       company_name: dto.companyName,
@@ -246,8 +268,8 @@ export class ClientsService {
       sales_stage_id: dto.salesStageId,
       temperature: dto.temperature,
       address: dto.address,
-      lat: dto.lat,
-      lng: dto.lng,
+      lat,
+      lng,
       website_url: dto.websiteUrl,
       characteristics: dto.characteristics,
       caution_notes: dto.cautionNotes,
@@ -276,13 +298,22 @@ export class ClientsService {
     if (dto.salesStageId !== undefined) updateRow.sales_stage_id = dto.salesStageId;
     if (dto.temperature !== undefined) updateRow.temperature = dto.temperature;
     if (dto.address !== undefined) updateRow.address = dto.address;
-    if (dto.lat !== undefined) updateRow.lat = dto.lat;
-    if (dto.lng !== undefined) updateRow.lng = dto.lng;
     if (dto.websiteUrl !== undefined) updateRow.website_url = dto.websiteUrl;
     if (dto.characteristics !== undefined) updateRow.characteristics = dto.characteristics;
     if (dto.cautionNotes !== undefined) updateRow.caution_notes = dto.cautionNotes;
     if (dto.discoveredBy !== undefined) updateRow.discovered_by = dto.discoveredBy;
     if (dto.lossReasonId !== undefined) updateRow.loss_reason_id = dto.lossReasonId;
+
+    // 住所が変更される場合は、緯度経度が明示的に指定されていなければ自動でジオコーディングする。
+    // 住所が変わらない更新では、指定された緯度経度(手動入力)だけをそのまま反映する。
+    if (dto.address !== undefined) {
+      const { lat, lng } = await this.resolveCoordinates(dto.address, dto.lat, dto.lng);
+      if (lat !== undefined) updateRow.lat = lat;
+      if (lng !== undefined) updateRow.lng = lng;
+    } else {
+      if (dto.lat !== undefined) updateRow.lat = dto.lat;
+      if (dto.lng !== undefined) updateRow.lng = dto.lng;
+    }
 
     const { data, error } = await client
       .from('clients')
