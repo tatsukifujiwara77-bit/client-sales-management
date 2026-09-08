@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Marker, Tooltip, useMap } from 'react-leaflet';
@@ -9,9 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { clientFetchApi } from '@/lib/api/client';
 import { createClientPinIcon } from '@/lib/map-pin-icon';
+import { MapAutoFit, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from '@/components/map/map-auto-fit';
 import type { MapClientPin } from '@/lib/api/types';
-
-const FUKUOKA_CENTER: [number, number] = [33.5902, 130.4017];
 
 function SearchThisAreaButton({ onSearch }: { onSearch: (bounds: LatLngBounds) => void }) {
   const map = useMap();
@@ -31,13 +30,6 @@ function SearchThisAreaButton({ onSearch }: { onSearch: (bounds: LatLngBounds) =
 export function ClientMap({ initialPins }: { initialPins: MapClientPin[] }) {
   const [pins, setPins] = useState(initialPins);
   const [isLoading, setIsLoading] = useState(false);
-
-  const center = useMemo<[number, number]>(() => {
-    if (pins.length === 0) return FUKUOKA_CENTER;
-    const avgLat = pins.reduce((sum, p) => sum + p.lat, 0) / pins.length;
-    const avgLng = pins.reduce((sum, p) => sum + p.lng, 0) / pins.length;
-    return [avgLat, avgLng];
-  }, [pins]);
 
   async function handleSearchThisArea(bounds: LatLngBounds) {
     setIsLoading(true);
@@ -82,11 +74,17 @@ export function ClientMap({ initialPins }: { initialPins: MapClientPin[] }) {
       </CardHeader>
       <CardContent className="relative">
         <div className="relative h-72 overflow-hidden rounded-xl rounded-bl-[2.25rem]">
-          <MapContainer center={center} zoom={12} scrollWheelZoom={false} className="size-full">
+          <MapContainer center={DEFAULT_MAP_CENTER} zoom={DEFAULT_MAP_ZOOM} scrollWheelZoom={false} className="size-full">
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            {/*
+              このミニ地図にはフィルタUIが無く、ピンの更新は「このエリアで検索」でしか
+              起きない。mode="once"にして初期表示だけを自動フィットし、以降はユーザーが
+              指定した表示範囲(このエリアで検索)を尊重してそれ以上動かさない。
+            */}
+            <MapAutoFit pins={pins} mode="once" />
             {pins.map((pin) => (
               <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={createClientPinIcon(pin.temperature)}>
                 <Tooltip>{pin.companyName}</Tooltip>

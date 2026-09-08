@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
@@ -10,12 +10,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { clientFetchApi } from '@/lib/api/client';
 import { createClientPinIcon } from '@/lib/map-pin-icon';
+import { MapAutoFit, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from './map-auto-fit';
 import { TEMPERATURE_LABELS, type Temperature } from '@/lib/domain-labels';
 import type { MapClientPin, Office, SalesStage } from '@/lib/api/types';
 
 const ALL = '__all__';
-
-const FUKUOKA_CENTER: [number, number] = [33.5902, 130.4017];
 
 function SearchThisAreaButton({ onSearch }: { onSearch: (bounds: LatLngBounds) => void }) {
   const map = useMap();
@@ -46,16 +45,13 @@ export function FullMap({ initialPins, offices, salesStages }: FullMapProps) {
   const [temperature, setTemperature] = useState(ALL);
   const [salesStageId, setSalesStageId] = useState(ALL);
   const [searchInput, setSearchInput] = useState('');
-
-  const center = useMemo<[number, number]>(() => {
-    if (pins.length === 0) return FUKUOKA_CENTER;
-    const avgLat = pins.reduce((sum, p) => sum + p.lat, 0) / pins.length;
-    const avgLng = pins.reduce((sum, p) => sum + p.lng, 0) / pins.length;
-    return [avgLat, avgLng];
-  }, [pins]);
+  // 「このエリアで検索」(bounds指定あり)のときはユーザーが選んだ表示範囲を維持し、
+  // それ以外の検索(初期表示・フィルタ変更後の「検索」)のときだけ結果に合わせて自動フィットする。
+  const [shouldAutoFit, setShouldAutoFit] = useState(true);
 
   async function search(bounds?: LatLngBounds) {
     setIsLoading(true);
+    setShouldAutoFit(!bounds);
     try {
       const params = new URLSearchParams();
       if (officeId !== ALL) params.set('officeId', officeId);
@@ -156,11 +152,12 @@ export function FullMap({ initialPins, offices, salesStages }: FullMapProps) {
         コンテキストにし、Leafletの内部z-indexをこの中に閉じ込める。
       */}
       <div className="relative isolate min-h-[28rem] flex-1 overflow-hidden rounded-lg">
-        <MapContainer center={center} zoom={12} scrollWheelZoom className="size-full">
+        <MapContainer center={DEFAULT_MAP_CENTER} zoom={DEFAULT_MAP_ZOOM} scrollWheelZoom className="size-full">
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          <MapAutoFit pins={pins} shouldFit={shouldAutoFit} />
           {pins.map((pin) => (
             <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={createClientPinIcon(pin.temperature)}>
               <Popup>
