@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Building2, LogOut } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,8 @@ import type { MeResponse } from '@/lib/api/types';
 interface SidebarProps {
   user: MeResponse;
   alertCount?: number;
+  /** Googleアカウントのプロフィールアイコン。取得できない場合はundefined/null(イニシャル表示にフォールバック)。 */
+  avatarUrl?: string | null;
 }
 
 function initialsFor(fullName: string): string {
@@ -59,7 +61,7 @@ function NavList({ alertCount, onNavigate }: { alertCount?: number; onNavigate?:
   );
 }
 
-function UserCard({ user }: { user: MeResponse }) {
+function UserCard({ user, avatarUrl }: { user: MeResponse; avatarUrl?: string | null }) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -73,6 +75,7 @@ function UserCard({ user }: { user: MeResponse }) {
     <div className="flex flex-col gap-2 border-t border-sidebar-border px-3 py-3">
       <div className="flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2">
         <Avatar className="size-8">
+          {avatarUrl ? <AvatarImage src={avatarUrl} alt={user.fullName} /> : null}
           <AvatarFallback className="bg-gradient-to-br from-[oklch(0.58_0.19_258)] to-[oklch(0.55_0.19_292)] text-white text-xs">
             {initialsFor(user.fullName)}
           </AvatarFallback>
@@ -119,14 +122,14 @@ function SidebarGlow() {
 }
 
 /** デスクトップ用の固定サイドバー（設計書 11.3「PC」レイアウト準拠） */
-export function Sidebar({ user, alertCount }: SidebarProps) {
+export function Sidebar({ user, alertCount, avatarUrl }: SidebarProps) {
   return (
     <aside className="relative hidden w-64 shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground md:flex">
       <SidebarGlow />
       <div className="relative z-10 flex h-full flex-col">
         <Logo />
         <NavList alertCount={alertCount} />
-        <UserCard user={user} />
+        <UserCard user={user} avatarUrl={avatarUrl} />
       </div>
     </aside>
   );
@@ -136,6 +139,7 @@ export function Sidebar({ user, alertCount }: SidebarProps) {
 export function MobileNav({
   user,
   alertCount,
+  avatarUrl,
   open,
   onOpenChange,
 }: SidebarProps & { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -147,7 +151,7 @@ export function MobileNav({
         <div className="relative z-10 flex h-full flex-col">
           <Logo />
           <NavList alertCount={alertCount} onNavigate={() => onOpenChange(false)} />
-          <UserCard user={user} />
+          <UserCard user={user} avatarUrl={avatarUrl} />
         </div>
       </SheetContent>
     </Sheet>

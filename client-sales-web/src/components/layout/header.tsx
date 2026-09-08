@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AlertTriangle, Bell, CalendarClock, Clock, LogOut, Menu, Search, UserCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +28,8 @@ interface HeaderProps {
   alertCounts?: AlertCounts;
   /** 承認待ちユーザー数。管理者以外にはundefined(通知メニューにも出さない)。 */
   pendingUsersCount?: number;
+  /** Googleアカウントのプロフィールアイコン。取得できない場合はundefined/null(イニシャル表示にフォールバック)。 */
+  avatarUrl?: string | null;
 }
 
 function initialsFor(fullName: string): string {
@@ -58,7 +60,7 @@ function NotificationRow({
   );
 }
 
-export function Header({ user, alertCount, alertCounts, pendingUsersCount }: HeaderProps) {
+export function Header({ user, alertCount, alertCounts, pendingUsersCount, avatarUrl }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -168,6 +170,7 @@ export function Header({ user, alertCount, alertCounts, pendingUsersCount }: Hea
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-3 rounded-full px-2 py-1 transition-colors hover:bg-accent">
             <Avatar className="size-8">
+              {avatarUrl ? <AvatarImage src={avatarUrl} alt={user.fullName} /> : null}
               <AvatarFallback className="bg-gradient-to-br from-[oklch(0.62_0.18_255)] to-[oklch(0.55_0.19_292)] text-white text-xs">
                 {initialsFor(user.fullName)}
               </AvatarFallback>
@@ -193,7 +196,13 @@ export function Header({ user, alertCount, alertCounts, pendingUsersCount }: Hea
         </DropdownMenu>
       </header>
 
-      <MobileNav user={user} alertCount={alertCount} open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
+      <MobileNav
+        user={user}
+        alertCount={alertCount}
+        avatarUrl={avatarUrl}
+        open={mobileNavOpen}
+        onOpenChange={setMobileNavOpen}
+      />
     </>
   );
 }
