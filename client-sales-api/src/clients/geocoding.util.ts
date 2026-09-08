@@ -12,6 +12,16 @@ interface GsiAddressSearchResult {
 }
 
 /**
+ * GSIの住所検索APIは先頭に郵便番号(「〒123-4567 」等)が付いていると該当なし(空配列)を
+ * 返してしまう(実際に本番環境で確認済み: 郵便番号付きで検索すると[]、外すと正しくヒットする)。
+ * クライアントの所在地欄には「〒890-0053 鹿児島市中央町18番地1」のような、郵便番号付きの
+ * 住所がそのまま入っていることが多いため、検索前に先頭の郵便番号を取り除く。
+ */
+function stripPostalCode(address: string): string {
+  return address.replace(/^[〒\s]*\d{3}-?\d{4}\s*/, '');
+}
+
+/**
  * 国土地理院(GSI)の住所検索APIを使って、日本語住所から緯度経度を取得する。
  * https://msearch.gsi.go.jp/address-search/AddressSearch?q=<住所>
  *
@@ -24,7 +34,7 @@ interface GsiAddressSearchResult {
  * (地図にピンが出ないだけで、クライアントの登録・更新自体は失敗させない)。
  */
 export async function geocodeAddress(address: string): Promise<GeocodedCoordinates | null> {
-  const trimmed = address.trim();
+  const trimmed = stripPostalCode(address.trim()).trim();
   if (!trimmed) {
     return null;
   }
