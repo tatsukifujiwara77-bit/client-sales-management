@@ -112,6 +112,7 @@ export interface MapClientPin {
   lat: number;
   lng: number;
   address: string | null;
+  buildingName: string | null;
   temperature: Temperature;
   salesStage: { id: string; name: string; isClosed: boolean };
   office: { id: string; name: string } | null;
@@ -180,6 +181,7 @@ export interface ClientListItem {
   salesStage: { id: string; name: string; isClosed: boolean };
   temperature: Temperature;
   address: string | null;
+  buildingName: string | null;
   lastVisitedAt: string | null;
   lastActivityAt: string | null;
   primaryAssignee: UserRef | null;

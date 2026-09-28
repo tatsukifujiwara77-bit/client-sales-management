@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ClientDetailActions } from '@/components/clients/detail/client-detail-actions';
 import { TEMPERATURE_LABELS } from '@/lib/domain-labels';
 import { formatDateWithWeekday } from '@/lib/domain-labels';
+import { formatFullAddress } from '@/lib/format-address';
 import type { ClientDetail, NextActionSummary } from '@/lib/api/types';
 
 const TEMPERATURE_EMOJI: Record<ClientDetail['temperature'], string> = {
@@ -26,6 +27,7 @@ interface ClientDetailHeaderProps {
 export function ClientDetailHeader({ client, nextAction }: ClientDetailHeaderProps) {
   const basePath = client.salesStage.isClosed ? '/clients' : '/sales-list';
   const backLabel = client.salesStage.isClosed ? 'クライアント一覧へ戻る' : '営業リストへ戻る';
+  const fullAddress = formatFullAddress(client.address, client.buildingName);
 
   return (
     <div className="space-y-3">
@@ -45,10 +47,10 @@ export function ClientDetailHeader({ client, nextAction }: ClientDetailHeaderPro
             </div>
             <div>
               <h1 className="text-2xl font-semibold text-foreground">{client.companyName}</h1>
-              {client.address ? (
+              {fullAddress ? (
                 <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                   <MapPin className="size-3.5" />
-                  {client.address}
+                  {fullAddress}
                 </p>
               ) : null}
               <div className="mt-2 flex flex-wrap items-center gap-2">

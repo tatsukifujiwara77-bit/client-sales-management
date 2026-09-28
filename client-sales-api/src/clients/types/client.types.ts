@@ -39,6 +39,8 @@ export interface ClientListItem {
   salesStage: SalesStageRef;
   temperature: Temperature;
   address: string | null;
+  /** ビル名・階数等。地図表示時は所在地(address)と連結して表示する */
+  buildingName: string | null;
   lastVisitedAt: string | null;
   lastActivityAt: string | null;
   primaryAssignee: UserRef | null;
@@ -96,6 +98,7 @@ export interface RawClientListRow {
   company_name: string;
   temperature: Temperature;
   address: string | null;
+  building_name: string | null;
   last_visited_at: string | null;
   last_activity_at: string | null;
   updated_at: string;

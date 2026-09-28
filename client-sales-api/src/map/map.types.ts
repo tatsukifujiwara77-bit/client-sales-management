@@ -6,6 +6,7 @@ export interface MapClientPin {
   lat: number;
   lng: number;
   address: string | null;
+  buildingName: string | null;
   temperature: Temperature;
   salesStage: { id: string; name: string; isClosed: boolean };
   office: { id: string; name: string } | null;
@@ -17,6 +18,7 @@ export interface RawMapClientRow {
   lat: number;
   lng: number;
   address: string | null;
+  building_name: string | null;
   temperature: Temperature;
   sales_stage: { id: string; name: string; is_closed: boolean };
   office: { id: string; name: string } | null;
@@ -29,6 +31,7 @@ export function mapMapClientRow(row: RawMapClientRow): MapClientPin {
     lat: row.lat,
     lng: row.lng,
     address: row.address,
+    buildingName: row.building_name,
     temperature: row.temperature,
     salesStage: { id: row.sales_stage.id, name: row.sales_stage.name, isClosed: row.sales_stage.is_closed },
     office: row.office ? { id: row.office.id, name: row.office.name } : null,

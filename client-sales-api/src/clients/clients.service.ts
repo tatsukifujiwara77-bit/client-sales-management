@@ -34,12 +34,12 @@ const SORT_COLUMN_MAP: Record<ClientSortField, string> = {
 };
 
 const LIST_COLUMNS =
-  'id, company_name, temperature, address, last_visited_at, last_activity_at, updated_at, ' +
+  'id, company_name, temperature, address, building_name, last_visited_at, last_activity_at, updated_at, ' +
   'office:offices(id, name), ' +
   'sales_stage:sales_stages!inner(id, name, is_closed)';
 
 const DETAIL_COLUMNS =
-  'id, company_name, temperature, address, last_visited_at, last_activity_at, updated_at, ' +
+  'id, company_name, temperature, address, building_name, last_visited_at, last_activity_at, updated_at, ' +
   'lat, lng, website_url, characteristics, caution_notes, created_at, created_by, updated_by, ' +
   'office:offices(id, name), ' +
   'sales_stage:sales_stages!inner(id, name, is_closed), ' +
@@ -268,6 +268,7 @@ export class ClientsService {
       sales_stage_id: dto.salesStageId,
       temperature: dto.temperature,
       address: dto.address,
+      building_name: dto.buildingName,
       lat,
       lng,
       website_url: dto.websiteUrl,
@@ -298,6 +299,7 @@ export class ClientsService {
     if (dto.salesStageId !== undefined) updateRow.sales_stage_id = dto.salesStageId;
     if (dto.temperature !== undefined) updateRow.temperature = dto.temperature;
     if (dto.address !== undefined) updateRow.address = dto.address;
+    if (dto.buildingName !== undefined) updateRow.building_name = dto.buildingName;
     if (dto.websiteUrl !== undefined) updateRow.website_url = dto.websiteUrl;
     if (dto.characteristics !== undefined) updateRow.characteristics = dto.characteristics;
     if (dto.cautionNotes !== undefined) updateRow.caution_notes = dto.cautionNotes;

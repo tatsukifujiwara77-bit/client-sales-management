@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { clientFetchApi } from '@/lib/api/client';
 import { createClientPinIcon } from '@/lib/map-pin-icon';
+import { formatFullAddress } from '@/lib/format-address';
 import { MapAutoFit, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from './map-auto-fit';
 import { TEMPERATURE_LABELS, type Temperature } from '@/lib/domain-labels';
 import type { MapClientPin, Office, SalesStage } from '@/lib/api/types';
@@ -158,12 +159,14 @@ export function FullMap({ initialPins, offices, salesStages }: FullMapProps) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <MapAutoFit pins={pins} shouldFit={shouldAutoFit} />
-          {pins.map((pin) => (
+          {pins.map((pin) => {
+            const fullAddress = formatFullAddress(pin.address, pin.buildingName);
+            return (
             <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={createClientPinIcon(pin.temperature)}>
               <Popup>
                 <div className="flex min-w-40 flex-col gap-1">
                   <p className="font-semibold text-foreground">{pin.companyName}</p>
-                  {pin.address ? <p className="text-xs text-muted-foreground">{pin.address}</p> : null}
+                  {fullAddress ? <p className="text-xs text-muted-foreground">{fullAddress}</p> : null}
                   <p className="text-xs text-muted-foreground">
                     {pin.salesStage.name} ・ {TEMPERATURE_LABELS[pin.temperature]}
                   </p>
@@ -176,7 +179,8 @@ export function FullMap({ initialPins, offices, salesStages }: FullMapProps) {
                 </div>
               </Popup>
             </Marker>
-          ))}
+            );
+          })}
           <SearchThisAreaButton onSearch={search} />
         </MapContainer>
         {isLoading ? (

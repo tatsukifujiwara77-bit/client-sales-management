@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Search, X, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { clientFetchApi } from '@/lib/api/client';
+import { formatFullAddress } from '@/lib/format-address';
 import type { ClientListItem, PagedResult } from '@/lib/api/types';
 
 export interface PickedClient {
@@ -102,7 +103,9 @@ export function ClientPicker({ value, onChange }: ClientPickerProps) {
             </p>
           ) : (
             <ul className="max-h-56 overflow-y-auto py-1">
-              {results.map((client) => (
+              {results.map((client) => {
+                const fullAddress = formatFullAddress(client.address, client.buildingName);
+                return (
                 <li key={client.id}>
                   <button
                     type="button"
@@ -115,10 +118,11 @@ export function ClientPicker({ value, onChange }: ClientPickerProps) {
                     className="flex w-full flex-col items-start px-3 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
                   >
                     <span className="font-medium text-foreground">{client.companyName}</span>
-                    {client.address ? <span className="text-xs text-muted-foreground">{client.address}</span> : null}
+                    {fullAddress ? <span className="text-xs text-muted-foreground">{fullAddress}</span> : null}
                   </button>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </div>

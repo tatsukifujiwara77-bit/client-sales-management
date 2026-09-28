@@ -39,6 +39,7 @@ export function mapClientListRow(row: RawClientListRow): ClientListItem {
     },
     temperature: row.temperature,
     address: row.address,
+    buildingName: row.building_name,
     lastVisitedAt: row.last_visited_at,
     lastActivityAt: row.last_activity_at,
     primaryAssignee: primary ? { id: primary.userId, fullName: primary.fullName } : null,

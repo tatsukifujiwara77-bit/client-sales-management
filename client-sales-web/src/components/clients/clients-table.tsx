@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatDateSlash, TEMPERATURE_EMOJI, TEMPERATURE_LABELS } from '@/lib/domain-labels';
+import { formatFullAddress } from '@/lib/format-address';
 import type { ClientListItem } from '@/lib/api/types';
 
 interface ClientsTableProps {
@@ -42,14 +43,16 @@ export function ClientsTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((client) => (
+              {items.map((client) => {
+                const fullAddress = formatFullAddress(client.address, client.buildingName);
+                return (
                 <TableRow key={client.id}>
                   <TableCell className="max-w-52">
                     <Link href={`${basePath}/${client.id}`} className="font-medium text-foreground hover:underline">
                       <span className="line-clamp-1">{client.companyName}</span>
                     </Link>
-                    {client.address ? (
-                      <span className="line-clamp-1 block text-xs text-muted-foreground">{client.address}</span>
+                    {fullAddress ? (
+                      <span className="line-clamp-1 block text-xs text-muted-foreground">{fullAddress}</span>
                     ) : null}
                   </TableCell>
                   <TableCell className="hidden whitespace-nowrap text-muted-foreground xl:table-cell">
@@ -97,7 +100,8 @@ export function ClientsTable({
                     )}
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </div>

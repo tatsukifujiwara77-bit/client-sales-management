@@ -5,7 +5,7 @@ import type { MapClientsQueryDto } from './dto/map-clients-query.dto.js';
 import { mapMapClientRow, type MapClientPin, type RawMapClientRow } from './map.types.js';
 
 const COLUMNS =
-  'id, company_name, lat, lng, address, temperature, ' +
+  'id, company_name, lat, lng, address, building_name, temperature, ' +
   'sales_stage:sales_stages!inner(id, name, is_closed), ' +
   'office:offices(id, name)';
 

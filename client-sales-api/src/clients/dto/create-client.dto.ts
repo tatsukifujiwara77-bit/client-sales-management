@@ -48,6 +48,12 @@ export class CreateClientDto {
   @MaxLength(500)
   address?: string;
 
+  /** ビル名・階数等。地図表示時は所在地(address)と連結して表示する（ジオコーディングにはaddressのみを使う） */
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  buildingName?: string;
+
   @IsOptional()
   @IsLatitude()
   lat?: number;
