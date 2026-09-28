@@ -36,9 +36,11 @@ describe('MapService', () => {
       lng: 130.4,
       address: '福岡市中央区',
       building_name: 'ソラリアビル 5F',
+      prefecture: '福岡県',
       temperature: 'high',
       sales_stage: { id: 'stage-1', name: '商談', is_closed: false },
       office: { id: 'office-1', name: '九州営業部' },
+      industries: [{ industry_id: 'ind-1', is_primary: true, industry: { id: 'ind-1', name: '製造' } }],
     };
     const { builder, calls } = createBuilderMock({ data: [row], error: null });
     const service = new MapService(buildSupabaseRequestServiceMock(builder));
@@ -59,6 +61,8 @@ describe('MapService', () => {
         lng: 130.4,
         address: '福岡市中央区',
         buildingName: 'ソラリアビル 5F',
+        prefecture: '福岡県',
+        industries: [{ id: 'ind-1', name: '製造', isPrimary: true }],
         temperature: 'high',
         salesStage: { id: 'stage-1', name: '商談', isClosed: false },
         office: { id: 'office-1', name: '九州営業部' },

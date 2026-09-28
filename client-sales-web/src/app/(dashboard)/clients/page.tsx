@@ -1,8 +1,14 @@
 import { serverFetchApi } from '@/lib/api/server';
-import { ClientsFilterBar } from '@/components/clients/clients-filter-bar';
-import { ClientsTable } from '@/components/clients/clients-table';
-import { PaginationBar } from '@/components/clients/pagination-bar';
-import type { ClientListItem, Office, PagedResult, SalesStage, UserSummary } from '@/lib/api/types';
+import { ClientsListPage } from '@/components/clients/clients-list-page';
+import type {
+  ClientListItem,
+  Industry,
+  IndustryColumn,
+  Office,
+  PagedResult,
+  SalesStage,
+  UserSummary,
+} from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
 
@@ -18,27 +24,37 @@ function toSingle(value: string | string[] | undefined): string | undefined {
 export default async function ClientsPage({ searchParams }: PageProps<'/clients'>) {
   const params = await searchParams;
 
-  const query = new URLSearchParams();
   const search = toSingle(params.search);
   const officeId = toSingle(params.officeId);
   const assignedTo = toSingle(params.assignedTo);
   const salesStageId = toSingle(params.salesStageId);
   const temperature = toSingle(params.temperature);
+  const prefecture = toSingle(params.prefecture);
+  const industryIds = toSingle(params.industryIds);
   const page = Number(toSingle(params.page) ?? '1') || 1;
 
+  const query = new URLSearchParams();
   if (search) query.set('search', search);
   if (officeId) query.set('officeId', officeId);
   if (assignedTo) query.set('assignedTo', assignedTo);
   if (salesStageId) query.set('salesStageId', salesStageId);
   if (temperature) query.set('temperature', temperature);
+  if (prefecture) query.set('prefecture', prefecture);
+  if (industryIds) query.set('industryIds', industryIds);
   query.set('isClosed', 'true');
   query.set('page', String(page));
   query.set('pageSize', String(PAGE_SIZE));
 
-  const [clients, offices, salesStages, users] = await Promise.all([
+  const groupedQuery = new URLSearchParams(query);
+  groupedQuery.delete('page');
+  groupedQuery.delete('pageSize');
+
+  const [clients, grouped, offices, salesStages, industries, users] = await Promise.all([
     serverFetchApi<PagedResult<ClientListItem>>(`/clients?${query.toString()}`),
+    serverFetchApi<IndustryColumn[]>(`/clients/grouped-by-industry?${groupedQuery.toString()}`),
     serverFetchApi<Office[]>('/offices'),
     serverFetchApi<SalesStage[]>('/sales-stages'),
+    serverFetchApi<Industry[]>('/industries'),
     serverFetchApi<UserSummary[]>('/users'),
   ]);
 
@@ -47,12 +63,14 @@ export default async function ClientsPage({ searchParams }: PageProps<'/clients'
   const closedSalesStages = salesStages.filter((s) => s.isClosed);
 
   return (
-    <div className="space-y-4">
-      <ClientsFilterBar offices={offices} salesStages={closedSalesStages} users={users} />
-
-      <ClientsTable items={clients.items} basePath="/clients" />
-
-      <PaginationBar page={clients.page} pageSize={clients.pageSize} total={clients.total} />
-    </div>
+    <ClientsListPage
+      offices={offices}
+      salesStages={closedSalesStages}
+      users={users}
+      industries={industries}
+      flat={clients}
+      grouped={grouped}
+      basePath="/clients"
+    />
   );
 }

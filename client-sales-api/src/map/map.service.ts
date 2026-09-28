@@ -1,13 +1,17 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { SupabaseRequestService } from '../supabase/supabase-request.service.js';
 import { throwIfSupabaseError } from '../common/supabase/supabase-error.util.js';
+import { NO_MATCH_CLIENT_ID, resolveClientIdsForIndustryFilter } from '../clients/industry-filter.util.js';
 import type { MapClientsQueryDto } from './dto/map-clients-query.dto.js';
 import { mapMapClientRow, type MapClientPin, type RawMapClientRow } from './map.types.js';
 
+const INDUSTRIES_COLUMNS = 'industry_id, is_primary, industry:industries(id, name)';
+
 const COLUMNS =
-  'id, company_name, lat, lng, address, building_name, temperature, ' +
+  'id, company_name, lat, lng, address, building_name, prefecture, temperature, ' +
   'sales_stage:sales_stages!inner(id, name, is_closed), ' +
-  'office:offices(id, name)';
+  'office:offices(id, name), ' +
+  `industries:client_industries(${INDUSTRIES_COLUMNS})`;
 
 /** PostgRESTの .or() フィルタ文法を壊しうる区切り文字を除去する（clients.service.tsと同じ方針） */
 function sanitizeSearchTerm(term: string): string {
@@ -55,11 +59,18 @@ export class MapService {
     if (query.salesStageId) {
       builder = builder.eq('sales_stage_id', query.salesStageId);
     }
+    if (query.prefecture) {
+      builder = builder.eq('prefecture', query.prefecture);
+    }
     if (query.search) {
       const term = sanitizeSearchTerm(query.search);
       if (term) {
         builder = builder.or(`company_name.ilike.%${term}%,address.ilike.%${term}%`);
       }
+    }
+    if (query.industryIds && query.industryIds.length > 0) {
+      const allowedIds = await resolveClientIdsForIndustryFilter(client, query.industryIds);
+      builder = builder.in('id', allowedIds.length > 0 ? allowedIds : [NO_MATCH_CLIENT_ID]);
     }
 
     const { data, error } = await builder.limit(query.limit ?? 500);

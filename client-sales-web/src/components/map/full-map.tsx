@@ -1,21 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import type { LatLngBounds } from 'leaflet';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { clientFetchApi } from '@/lib/api/client';
 import { createClientPinIcon } from '@/lib/map-pin-icon';
 import { formatFullAddress } from '@/lib/format-address';
 import { MapAutoFit, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from './map-auto-fit';
 import { TEMPERATURE_LABELS, type Temperature } from '@/lib/domain-labels';
-import type { MapClientPin, Office, SalesStage } from '@/lib/api/types';
+import type { Industry, MapClientPin, Office, SalesStage } from '@/lib/api/types';
 
 const ALL = '__all__';
+const UNASSIGNED_INDUSTRY = 'unassigned';
 
 function SearchThisAreaButton({ onSearch }: { onSearch: (bounds: LatLngBounds) => void }) {
   const map = useMap();
@@ -36,19 +39,49 @@ interface FullMapProps {
   initialPins: MapClientPin[];
   offices: Office[];
   salesStages: SalesStage[];
+  industries: Industry[];
 }
 
-/** 地図画面（設計書 11.4「エリア別クライアントマップ」のフルスクリーン版）。 */
-export function FullMap({ initialPins, offices, salesStages }: FullMapProps) {
+/**
+ * 地図画面（設計書 11.4「エリア別クライアントマップ」のフルスクリーン版）。
+ * 絞り込み条件はURLのクエリパラメータに同期し(clients-filter-bar.tsxと同じ考え方)、
+ * 再読み込み・共有をしても同じ条件で開けるようにする(地図の表示範囲(bounds)は対象外)。
+ */
+export function FullMap({ initialPins, offices, salesStages, industries }: FullMapProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [pins, setPins] = useState(initialPins);
   const [isLoading, setIsLoading] = useState(false);
-  const [officeId, setOfficeId] = useState(ALL);
-  const [temperature, setTemperature] = useState(ALL);
-  const [salesStageId, setSalesStageId] = useState(ALL);
-  const [searchInput, setSearchInput] = useState('');
+  const [officeId, setOfficeId] = useState(searchParams.get('officeId') ?? ALL);
+  const [temperature, setTemperature] = useState(searchParams.get('temperature') ?? ALL);
+  const [salesStageId, setSalesStageId] = useState(searchParams.get('salesStageId') ?? ALL);
+  const [prefecture, setPrefecture] = useState(searchParams.get('prefecture') ?? ALL);
+  const [industryIds, setIndustryIds] = useState<string[]>(
+    (searchParams.get('industryIds') ?? '').split(',').filter(Boolean),
+  );
+  const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? '');
+  const [prefectureOptions, setPrefectureOptions] = useState<string[]>([]);
   // 「このエリアで検索」(bounds指定あり)のときはユーザーが選んだ表示範囲を維持し、
   // それ以外の検索(初期表示・フィルタ変更後の「検索」)のときだけ結果に合わせて自動フィットする。
   const [shouldAutoFit, setShouldAutoFit] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams();
+    if (officeId !== ALL) params.set('officeId', officeId);
+    clientFetchApi<string[]>(`/clients/prefectures?${params.toString()}`)
+      .then((result) => {
+        if (!cancelled) setPrefectureOptions(result);
+      })
+      .catch(() => {
+        if (!cancelled) setPrefectureOptions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [officeId]);
 
   async function search(bounds?: LatLngBounds) {
     setIsLoading(true);
@@ -58,7 +91,13 @@ export function FullMap({ initialPins, offices, salesStages }: FullMapProps) {
       if (officeId !== ALL) params.set('officeId', officeId);
       if (temperature !== ALL) params.set('temperature', temperature);
       if (salesStageId !== ALL) params.set('salesStageId', salesStageId);
+      if (prefecture !== ALL) params.set('prefecture', prefecture);
+      if (industryIds.length > 0) params.set('industryIds', industryIds.join(','));
       if (searchInput.trim()) params.set('search', searchInput.trim());
+
+      // 絞り込み条件(表示範囲は含めない)をURLへ反映し、再読み込み・共有時も同じ条件で開けるようにする
+      router.replace(`${pathname}?${params.toString()}`);
+
       if (bounds) {
         const sw = bounds.getSouthWest();
         const ne = bounds.getNorthEast();
@@ -86,6 +125,14 @@ export function FullMap({ initialPins, offices, salesStages }: FullMapProps) {
     { value: ALL, label: 'すべてのフェーズ' },
     ...salesStages.map((s) => ({ value: s.id, label: s.name })),
   ];
+  const prefectureItems = [
+    { value: ALL, label: 'すべての都道府県' },
+    ...prefectureOptions.map((p) => ({ value: p, label: p })),
+  ];
+  const industryItems = [
+    ...industries.map((i) => ({ value: i.id, label: i.name })),
+    { value: UNASSIGNED_INDUSTRY, label: '未設定' },
+  ];
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -112,6 +159,27 @@ export function FullMap({ initialPins, offices, salesStages }: FullMapProps) {
             ))}
           </SelectContent>
         </Select>
+
+        <Select items={prefectureItems} defaultValue={ALL} onValueChange={(v) => setPrefecture(v ?? ALL)}>
+          <SelectTrigger className="w-full sm:w-36">
+            <SelectValue placeholder="都道府県" />
+          </SelectTrigger>
+          <SelectContent>
+            {prefectureItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <MultiSelect
+          items={industryItems}
+          selected={industryIds}
+          onChange={setIndustryIds}
+          placeholder="すべての業種"
+          className="w-full sm:w-40"
+        />
 
         <Select items={temperatureItems} defaultValue={ALL} onValueChange={(v) => setTemperature(v ?? ALL)}>
           <SelectTrigger className="w-full sm:w-36">
@@ -161,12 +229,19 @@ export function FullMap({ initialPins, offices, salesStages }: FullMapProps) {
           <MapAutoFit pins={pins} shouldFit={shouldAutoFit} />
           {pins.map((pin) => {
             const fullAddress = formatFullAddress(pin.address, pin.buildingName);
+            const primaryIndustry = pin.industries.find((i) => i.isPrimary) ?? pin.industries[0];
             return (
             <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={createClientPinIcon(pin.temperature)}>
               <Popup>
                 <div className="flex min-w-40 flex-col gap-1">
                   <p className="font-semibold text-foreground">{pin.companyName}</p>
                   {fullAddress ? <p className="text-xs text-muted-foreground">{fullAddress}</p> : null}
+                  {primaryIndustry ? (
+                    <p className="text-xs text-muted-foreground">
+                      {primaryIndustry.name}
+                      {pin.industries.length > 1 ? ` 他${pin.industries.length - 1}件` : ''}
+                    </p>
+                  ) : null}
                   <p className="text-xs text-muted-foreground">
                     {pin.salesStage.name} ・ {TEMPERATURE_LABELS[pin.temperature]}
                   </p>

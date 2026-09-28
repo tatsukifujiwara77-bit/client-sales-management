@@ -1,9 +1,11 @@
 import type {
   ClientAssignmentItem,
   ClientDetail,
+  ClientIndustryItem,
   ClientListItem,
   RawAssignmentEmbed,
   RawClientDetailRow,
+  RawClientIndustryEmbed,
   RawClientListRow,
 } from './types/client.types.js';
 
@@ -24,6 +26,19 @@ function findPrimaryAssignee(assignments: ClientAssignmentItem[]): ClientAssignm
   return assignments.find((a) => a.isPrimary) ?? assignments[0] ?? null;
 }
 
+function mapIndustries(raw: RawClientIndustryEmbed[] | null): ClientIndustryItem[] {
+  if (!raw) return [];
+  return raw
+    .filter((i): i is RawClientIndustryEmbed & { industry: NonNullable<RawClientIndustryEmbed['industry']> } =>
+      Boolean(i.industry),
+    )
+    .map((i) => ({
+      id: i.industry.id,
+      name: i.industry.name,
+      isPrimary: i.is_primary,
+    }));
+}
+
 export function mapClientListRow(row: RawClientListRow): ClientListItem {
   const assignments = mapAssignments(row.assignments);
   const primary = findPrimaryAssignee(assignments);
@@ -40,6 +55,8 @@ export function mapClientListRow(row: RawClientListRow): ClientListItem {
     temperature: row.temperature,
     address: row.address,
     buildingName: row.building_name,
+    prefecture: row.prefecture,
+    industries: mapIndustries(row.industries),
     lastVisitedAt: row.last_visited_at,
     lastActivityAt: row.last_activity_at,
     primaryAssignee: primary ? { id: primary.userId, fullName: primary.fullName } : null,

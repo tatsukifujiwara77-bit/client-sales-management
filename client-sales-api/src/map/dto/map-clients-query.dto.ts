@@ -1,6 +1,12 @@
 import { Transform } from 'class-transformer';
-import { IsIn, IsInt, IsLatitude, IsLongitude, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsArray, IsIn, IsInt, IsLatitude, IsLongitude, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 import { TEMPERATURES, type Temperature } from '../../clients/dto/create-client.dto.js';
+
+const toStringArray = ({ value }: { value: unknown }): unknown => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string' && value.length > 0) return value.split(',');
+  return value;
+};
 
 /**
  * GET /map/clients のクエリパラメータ（設計書 11.4「エリア別クライアントマップ」）。
@@ -39,6 +45,16 @@ export class MapClientsQueryDto {
   @IsOptional()
   @IsUUID()
   salesStageId?: string;
+
+  @IsOptional()
+  @IsString()
+  prefecture?: string;
+
+  @IsOptional()
+  @Transform(toStringArray)
+  @IsArray()
+  @IsString({ each: true })
+  industryIds?: string[];
 
   @IsOptional()
   @IsString()

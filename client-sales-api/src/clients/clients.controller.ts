@@ -18,6 +18,7 @@ import { UpdateClientDto } from './dto/update-client.dto.js';
 import { ListClientsQueryDto } from './dto/list-clients-query.dto.js';
 import { AssignClientDto } from './dto/assign-client.dto.js';
 import { PipelineQueryDto } from './dto/pipeline-query.dto.js';
+import { GroupedByIndustryQueryDto } from './dto/grouped-by-industry-query.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import type { AuthUser } from '../common/types/authenticated-request.js';
 
@@ -37,6 +38,18 @@ export class ClientsController {
   @Get('pipeline')
   getPipeline(@Query() query: PipelineQueryDto) {
     return this.clientsService.getPipeline(query);
+  }
+
+  /** 業種別グループ表示（一覧・営業リストの「一覧／業種別」切替用）。':id'より前に定義する。 */
+  @Get('grouped-by-industry')
+  getGroupedByIndustry(@Query() query: GroupedByIndustryQueryDto) {
+    return this.clientsService.getGroupedByIndustry(query);
+  }
+
+  /** 絞り込みバーの都道府県セレクトの候補一覧。':id'より前に定義する。 */
+  @Get('prefectures')
+  getDistinctPrefectures(@Query('officeId') officeId?: string) {
+    return this.clientsService.getDistinctPrefectures(officeId);
   }
 
   @Get(':id')
@@ -66,6 +79,15 @@ export class ClientsController {
       throw new ForbiddenException('Only admins can trigger a geocoding backfill.');
     }
     return this.clientsService.backfillGeocoding();
+  }
+
+  /** 既存クライアントの都道府県一括補完(管理者限定)。backfill-geocodingと同じ方針。 */
+  @Post('backfill-prefecture')
+  backfillPrefecture(@CurrentUser() user: AuthUser) {
+    if (user.role !== 'admin') {
+      throw new ForbiddenException('Only admins can trigger a prefecture backfill.');
+    }
+    return this.clientsService.backfillPrefecture();
   }
 
   @Patch(':id')

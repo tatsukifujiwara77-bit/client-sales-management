@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { MapClientPin, Office, SalesStage } from '@/lib/api/types';
+import type { Industry, MapClientPin, Office, SalesStage } from '@/lib/api/types';
 
 // Leaflet はモジュール読み込み時に window/document に触れるため、
 // Server Component からは `ssr:false` を直接使えない（Next.js 16の制約）。
@@ -16,6 +16,7 @@ interface FullMapLoaderProps {
   initialPins: MapClientPin[];
   offices: Office[];
   salesStages: SalesStage[];
+  industries: Industry[];
 }
 
 export function FullMapLoader(props: FullMapLoaderProps) {

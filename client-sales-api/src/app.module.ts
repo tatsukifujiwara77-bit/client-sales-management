@@ -15,6 +15,7 @@ import { ActionItemsModule } from './action-items/action-items.module.js';
 import { AlertsModule } from './alerts/alerts.module.js';
 import { AlertSettingsModule } from './alert-settings/alert-settings.module.js';
 import { SalesStagesModule } from './sales-stages/sales-stages.module.js';
+import { IndustriesModule } from './industries/industries.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { MapModule } from './map/map.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -40,6 +41,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
     AlertsModule,
     AlertSettingsModule,
     SalesStagesModule,
+    IndustriesModule,
     DashboardModule,
     MapModule,
     UsersModule,

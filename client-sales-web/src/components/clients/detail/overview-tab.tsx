@@ -48,6 +48,31 @@ export function OverviewTab({
               )
             }
           />
+          <InfoRow
+            label="業種"
+            value={
+              client.industries.length > 0 ? (
+                <span className="flex flex-wrap justify-end gap-1.5">
+                  {[...client.industries]
+                    .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary))
+                    .map((industry) => (
+                      <span
+                        key={industry.id}
+                        className={
+                          industry.isPrimary
+                            ? 'inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground'
+                            : 'inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground'
+                        }
+                      >
+                        {industry.name}
+                      </span>
+                    ))}
+                </span>
+              ) : (
+                '未設定'
+              )
+            }
+          />
           <InfoRow label="担当拠点" value={client.office?.name ?? '—'} />
           <InfoRow label="担当営業" value={client.primaryAssignee?.fullName ?? '未割当'} />
           <InfoRow label="開拓者" value={client.discoveredBy?.fullName ?? '—'} />

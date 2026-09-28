@@ -2,17 +2,19 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, Star } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from 'cn';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { clientFetchApi } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
 import { TEMPERATURE_LABELS } from '@/lib/domain-labels';
-import type { ClientDetail, Office, SalesStage, Temperature, UserSummary } from '@/lib/api/types';
+import type { ClientDetail, Industry, Office, SalesStage, Temperature, UserSummary } from '@/lib/api/types';
 
 const TEMPERATURE_VALUES: Temperature[] = ['high', 'medium', 'low', 'unknown'];
 const NO_ASSIGNEE_VALUE = '__unassigned__';
@@ -24,6 +26,8 @@ interface ClientFormValues {
   salesStageId: string;
   assigneeId: string;
   temperature: Temperature;
+  industryIds: string[];
+  primaryIndustryId: string;
   address: string;
   buildingName: string;
   characteristics: string;
@@ -38,6 +42,8 @@ function toFormValues(client: ClientDetail | null): ClientFormValues {
     salesStageId: client?.salesStage.id ?? '',
     assigneeId: client?.primaryAssignee?.id ?? NO_ASSIGNEE_VALUE,
     temperature: client?.temperature ?? 'unknown',
+    industryIds: client?.industries.map((i) => i.id) ?? [],
+    primaryIndustryId: client?.industries.find((i) => i.isPrimary)?.id ?? '',
     address: client?.address ?? '',
     buildingName: client?.buildingName ?? '',
     characteristics: client?.characteristics ?? '',
@@ -49,6 +55,7 @@ interface ClientFormProps {
   offices: Office[];
   salesStages: SalesStage[];
   users: UserSummary[];
+  industries: Industry[];
   /** 編集時は既存のクライアント、新規登録時はnull */
   client?: ClientDetail | null;
   /**
@@ -68,7 +75,14 @@ interface ClientFormProps {
  * 会社名等の通常フィールドとは別に、クライアント保存が成功した後に続けて
  * assign/unassignを呼ぶ形で反映する(新規登録時は作成直後のidを使って割り当てる)。
  */
-export function ClientForm({ offices, salesStages, users, client = null, basePath = '/clients' }: ClientFormProps) {
+export function ClientForm({
+  offices,
+  salesStages,
+  users,
+  industries,
+  client = null,
+  basePath = '/clients',
+}: ClientFormProps) {
   const router = useRouter();
   const isEditing = client !== null;
   const [values, setValues] = useState<ClientFormValues>(toFormValues(client));
@@ -76,6 +90,15 @@ export function ClientForm({ offices, salesStages, users, client = null, basePat
 
   function update<K extends keyof ClientFormValues>(key: K, value: ClientFormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
+  }
+
+  /** 業種の選択を更新する。主業種が選択から外れた場合は先頭を自動で繰り上げる */
+  function updateIndustryIds(nextIds: string[]) {
+    setValues((prev) => ({
+      ...prev,
+      industryIds: nextIds,
+      primaryIndustryId: nextIds.includes(prev.primaryIndustryId) ? prev.primaryIndustryId : (nextIds[0] ?? ''),
+    }));
   }
 
   // Base UIのSelectは`items`を渡さないと<SelectValue>が生の value(UUID等)をそのまま表示してしまうため、
@@ -129,6 +152,8 @@ export function ClientForm({ offices, salesStages, users, client = null, basePat
         officeId: values.officeId,
         salesStageId: values.salesStageId,
         temperature: values.temperature,
+        industryIds: values.industryIds,
+        primaryIndustryId: values.primaryIndustryId || undefined,
         address: values.address.trim() || undefined,
         buildingName: values.buildingName.trim() || undefined,
         characteristics: values.characteristics.trim() || undefined,
@@ -232,6 +257,44 @@ export function ClientForm({ offices, salesStages, users, client = null, basePat
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label>業種</Label>
+        <MultiSelect
+          items={industries.map((i) => ({ value: i.id, label: i.name }))}
+          selected={values.industryIds}
+          onChange={updateIndustryIds}
+          placeholder="業種を選択(複数可)"
+        />
+        {values.industryIds.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
+            {values.industryIds.map((id) => {
+              const industry = industries.find((i) => i.id === id);
+              if (!industry) return null;
+              const isPrimary = id === values.primaryIndustryId;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => update('primaryIndustryId', id)}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium',
+                    isPrimary
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-accent',
+                  )}
+                >
+                  {isPrimary ? <Star className="size-3 fill-current" /> : null}
+                  {industry.name}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        <p className="text-xs text-muted-foreground">
+          複数選択できます。タグをクリックすると主業種(★)に切り替わります。選択の解除は上のドロップダウンから行ってください。
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsIn,
   IsLatitude,
   IsLongitude,
@@ -78,4 +79,15 @@ export class CreateClientDto {
   @IsOptional()
   @IsUUID()
   lossReasonId?: string;
+
+  /** 業種（複数可）。空配列を送ると全て解除する。未指定(キー自体が無い)場合は既存の業種を変更しない */
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  industryIds?: string[];
+
+  /** 主業種。省略時は industryIds が1件ならそれを、複数なら先頭を主業種として扱う */
+  @IsOptional()
+  @IsUUID()
+  primaryIndustryId?: string;
 }

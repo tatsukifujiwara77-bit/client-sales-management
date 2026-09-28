@@ -437,7 +437,15 @@ describe('ClientsService', () => {
 
       expect(geocodeAddressMock).toHaveBeenCalledWith('東京都千代田区丸の内1-1-1');
       expect(calls.update).toEqual([
-        [{ updated_by: 'user-1', address: '東京都千代田区丸の内1-1-1', lat: 35.6812, lng: 139.7671 }],
+        [
+          {
+            updated_by: 'user-1',
+            address: '東京都千代田区丸の内1-1-1',
+            lat: 35.6812,
+            lng: 139.7671,
+            prefecture: '東京都',
+          },
+        ],
       ]);
     });
 
@@ -672,6 +680,121 @@ describe('ClientsService', () => {
       expect(columns[0].clients).toHaveLength(1);
       expect(columns[1]).toMatchObject({ stage: { id: 'stage-2', name: '契約・取引中' }, count: 0 });
       expect(columns[1].clients).toHaveLength(0);
+    });
+  });
+
+  describe('syncIndustries (via update)', () => {
+    const detailRow = {
+      id: 'client-1',
+      company_name: '株式会社ABC',
+      temperature: 'unknown',
+      address: null,
+      last_visited_at: null,
+      last_activity_at: null,
+      updated_at: '2026-05-20T00:00:00Z',
+      lat: null,
+      lng: null,
+      characteristics: null,
+      caution_notes: null,
+      created_at: '2026-05-20T00:00:00Z',
+      created_by: 'user-1',
+      updated_by: 'user-1',
+      office: null,
+      sales_stage: { id: 'stage-1', name: '未接触', is_closed: false },
+      loss_reason: null,
+      discovered_by_profile: null,
+      assignments: [],
+      industries: [],
+    };
+
+    function buildFromSpy() {
+      const clientIndustries = createBuilderMock({ data: null, error: null });
+      const fromSpy = vi.fn((table: string) => {
+        if (table === 'client_industries') return clientIndustries.builder;
+        return createBuilderMock({ data: detailRow, error: null }).builder;
+      });
+      return { fromSpy, clientIndustriesCalls: clientIndustries.calls };
+    }
+
+    it('marks the given primaryIndustryId as primary and clears the rest', async () => {
+      const { fromSpy, clientIndustriesCalls } = buildFromSpy();
+      const service = new ClientsService(
+        buildSupabaseRequestServiceMock(fromSpy),
+        buildStubContactsService(),
+        buildStubNotesService(),
+        buildStubActivitiesService(),
+        buildStubActionItemsService(),
+      );
+
+      await service.update(
+        'client-1',
+        { industryIds: ['industry-a', 'industry-b'], primaryIndustryId: 'industry-b' },
+        currentUser,
+      );
+
+      expect(clientIndustriesCalls.delete).toHaveLength(1);
+      expect(clientIndustriesCalls.insert).toEqual([
+        [
+          [
+            { client_id: 'client-1', industry_id: 'industry-a', is_primary: false },
+            { client_id: 'client-1', industry_id: 'industry-b', is_primary: true },
+          ],
+        ],
+      ]);
+    });
+
+    it('defaults the primary to the first id when primaryIndustryId is not given', async () => {
+      const { fromSpy, clientIndustriesCalls } = buildFromSpy();
+      const service = new ClientsService(
+        buildSupabaseRequestServiceMock(fromSpy),
+        buildStubContactsService(),
+        buildStubNotesService(),
+        buildStubActivitiesService(),
+        buildStubActionItemsService(),
+      );
+
+      await service.update('client-1', { industryIds: ['industry-a', 'industry-b'] }, currentUser);
+
+      expect(clientIndustriesCalls.insert).toEqual([
+        [
+          [
+            { client_id: 'client-1', industry_id: 'industry-a', is_primary: true },
+            { client_id: 'client-1', industry_id: 'industry-b', is_primary: false },
+          ],
+        ],
+      ]);
+    });
+
+    it('deletes all industries and skips insert when industryIds is empty (removing the last one auto-promotes nothing)', async () => {
+      const { fromSpy, clientIndustriesCalls } = buildFromSpy();
+      const service = new ClientsService(
+        buildSupabaseRequestServiceMock(fromSpy),
+        buildStubContactsService(),
+        buildStubNotesService(),
+        buildStubActivitiesService(),
+        buildStubActionItemsService(),
+      );
+
+      await service.update('client-1', { industryIds: [] }, currentUser);
+
+      expect(clientIndustriesCalls.delete).toHaveLength(1);
+      expect(clientIndustriesCalls.insert).toHaveLength(0);
+    });
+
+    it('leaves existing industries untouched when industryIds is not part of the update', async () => {
+      const { fromSpy, clientIndustriesCalls } = buildFromSpy();
+      const service = new ClientsService(
+        buildSupabaseRequestServiceMock(fromSpy),
+        buildStubContactsService(),
+        buildStubNotesService(),
+        buildStubActivitiesService(),
+        buildStubActionItemsService(),
+      );
+
+      await service.update('client-1', { temperature: 'high' }, currentUser);
+
+      expect(clientIndustriesCalls.delete).toHaveLength(0);
+      expect(clientIndustriesCalls.insert).toHaveLength(0);
     });
   });
 });

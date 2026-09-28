@@ -31,6 +31,12 @@ export interface ClientAssignmentItem {
   isPrimary: boolean;
 }
 
+export interface ClientIndustryItem {
+  id: string;
+  name: string;
+  isPrimary: boolean;
+}
+
 /** GET /clients の一覧表示に必要な最小限の項目（設計書 11.4 準拠） */
 export interface ClientListItem {
   id: string;
@@ -41,6 +47,10 @@ export interface ClientListItem {
   address: string | null;
   /** ビル名・階数等。地図表示時は所在地(address)と連結して表示する */
   buildingName: string | null;
+  /** 所在地から自動判定した都道府県。手入力欄は無く、判定できない場合はnull */
+  prefecture: string | null;
+  /** 業種（複数可）。主業種が先頭に来るとは限らないため、表示側でisPrimaryを見て並べ替える */
+  industries: ClientIndustryItem[];
   lastVisitedAt: string | null;
   lastActivityAt: string | null;
   primaryAssignee: UserRef | null;
@@ -93,18 +103,31 @@ export interface RawAssignmentEmbed {
   profile: RawProfileEmbed | null;
 }
 
+export interface RawIndustryEmbed {
+  id: string;
+  name: string;
+}
+
+export interface RawClientIndustryEmbed {
+  industry_id: string;
+  is_primary: boolean;
+  industry: RawIndustryEmbed | null;
+}
+
 export interface RawClientListRow {
   id: string;
   company_name: string;
   temperature: Temperature;
   address: string | null;
   building_name: string | null;
+  prefecture: string | null;
   last_visited_at: string | null;
   last_activity_at: string | null;
   updated_at: string;
   office: RawOfficeEmbed | null;
   sales_stage: RawSalesStageEmbed;
   assignments: RawAssignmentEmbed[] | null;
+  industries: RawClientIndustryEmbed[] | null;
 }
 
 export interface RawClientDetailRow extends RawClientListRow {
@@ -138,6 +161,16 @@ export interface ClientDossier {
 export interface PipelineColumn {
   stage: SalesStageRef;
   /** そのフェーズに該当する総件数（clientsの表示上限とは独立） */
+  count: number;
+  clients: ClientListItem[];
+}
+
+// --- 業種別グループ表示 ---
+
+export interface IndustryColumn {
+  /** nullは「未設定」グループ（業種マスタの並び順の末尾に固定） */
+  industry: { id: string; name: string } | null;
+  /** そのグループ(主業種が一致するクライアント)の総件数（clientsの表示上限とは独立） */
   count: number;
   clients: ClientListItem[];
 }

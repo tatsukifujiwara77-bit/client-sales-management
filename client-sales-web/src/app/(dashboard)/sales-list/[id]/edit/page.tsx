@@ -2,15 +2,16 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { serverFetchApi } from '@/lib/api/server';
 import { ClientForm } from '@/components/clients/client-form';
-import type { ClientDetail, Office, SalesStage, UserSummary } from '@/lib/api/types';
+import type { ClientDetail, Industry, Office, SalesStage, UserSummary } from '@/lib/api/types';
 
 export default async function EditSalesListEntryPage({ params }: PageProps<'/sales-list/[id]/edit'>) {
   const { id } = await params;
 
-  const [client, offices, salesStages, users] = await Promise.all([
+  const [client, offices, salesStages, industries, users] = await Promise.all([
     serverFetchApi<ClientDetail>(`/clients/${id}`),
     serverFetchApi<Office[]>('/offices'),
     serverFetchApi<SalesStage[]>('/sales-stages'),
+    serverFetchApi<Industry[]>('/industries'),
     serverFetchApi<UserSummary[]>('/users'),
   ]);
 
@@ -28,6 +29,7 @@ export default async function EditSalesListEntryPage({ params }: PageProps<'/sal
         offices={offices}
         salesStages={salesStages}
         users={users}
+        industries={industries}
         client={client}
         basePath="/sales-list"
       />

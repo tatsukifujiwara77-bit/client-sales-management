@@ -25,6 +25,12 @@ export interface UserRef {
   fullName: string;
 }
 
+export interface ClientIndustryItem {
+  id: string;
+  name: string;
+  isPrimary: boolean;
+}
+
 export interface KpiMetric {
   count: number;
   changePercent: number | null;
@@ -113,6 +119,8 @@ export interface MapClientPin {
   lng: number;
   address: string | null;
   buildingName: string | null;
+  prefecture: string | null;
+  industries: ClientIndustryItem[];
   temperature: Temperature;
   salesStage: { id: string; name: string; isClosed: boolean };
   office: { id: string; name: string } | null;
@@ -158,6 +166,17 @@ export interface SalesStage {
   updatedAt: string;
 }
 
+/** 業種マスタ（設定画面「業種管理」タブ用） */
+export interface Industry {
+  id: string;
+  name: string;
+  sortOrder: number;
+  /** 使用中の業種は削除できないようにするための参考件数 */
+  clientCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** アラートのしきい値等、設定値（設計書 25. アラート設定） */
 export interface AlertSetting {
   key: string;
@@ -182,6 +201,8 @@ export interface ClientListItem {
   temperature: Temperature;
   address: string | null;
   buildingName: string | null;
+  prefecture: string | null;
+  industries: ClientIndustryItem[];
   lastVisitedAt: string | null;
   lastActivityAt: string | null;
   primaryAssignee: UserRef | null;
@@ -193,6 +214,15 @@ export interface ClientListItem {
 export interface PipelineColumn {
   stage: { id: string; name: string; isClosed: boolean };
   /** そのフェーズに該当する総件数（clients の表示上限とは独立） */
+  count: number;
+  clients: ClientListItem[];
+}
+
+/** GET /clients/grouped-by-industry のカラム1件分（一覧・営業リストの「業種別」表示用） */
+export interface IndustryColumn {
+  /** nullは「未設定」グループ */
+  industry: { id: string; name: string } | null;
+  /** そのグループ(主業種が一致するクライアント)の総件数（clients の表示上限とは独立） */
   count: number;
   clients: ClientListItem[];
 }

@@ -1,6 +1,13 @@
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 import { TEMPERATURES, type Temperature } from './create-client.dto.js';
+
+/** カンマ区切りのクエリ文字列を配列に変換する（業種の複数選択フィルタ用） */
+const toStringArray = ({ value }: { value: unknown }): unknown => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string' && value.length > 0) return value.split(',');
+  return value;
+};
 
 export const CLIENT_SORT_FIELDS = [
   'companyName',
@@ -44,6 +51,18 @@ export class ListClientsQueryDto {
   @IsOptional()
   @IsIn(TEMPERATURES)
   temperature?: Temperature;
+
+  /** 都道府県での絞り込み（単一選択） */
+  @IsOptional()
+  @IsString()
+  prefecture?: string;
+
+  /** 業種での絞り込み（複数選択・OR）。予約値'unassigned'で「未設定」を表す */
+  @IsOptional()
+  @Transform(toStringArray)
+  @IsArray()
+  @IsString({ each: true })
+  industryIds?: string[];
 
   /** true: 営業終了フェーズのみ / false: 営業終了以外のみ */
   @IsOptional()

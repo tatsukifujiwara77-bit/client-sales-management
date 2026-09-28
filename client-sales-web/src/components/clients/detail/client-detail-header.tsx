@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { AlertCircle, ArrowLeft, Building2, MapPin } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ClientDetailActions } from '@/components/clients/detail/client-detail-actions';
 import { TEMPERATURE_LABELS } from '@/lib/domain-labels';
 import { formatDateWithWeekday } from '@/lib/domain-labels';
@@ -28,6 +29,8 @@ export function ClientDetailHeader({ client, nextAction }: ClientDetailHeaderPro
   const basePath = client.salesStage.isClosed ? '/clients' : '/sales-list';
   const backLabel = client.salesStage.isClosed ? 'クライアント一覧へ戻る' : '営業リストへ戻る';
   const fullAddress = formatFullAddress(client.address, client.buildingName);
+  const primaryIndustry = client.industries.find((i) => i.isPrimary) ?? client.industries[0];
+  const otherIndustryCount = client.industries.length - (primaryIndustry ? 1 : 0);
 
   return (
     <div className="space-y-3">
@@ -64,6 +67,24 @@ export function ClientDetailHeader({ client, nextAction }: ClientDetailHeaderPro
                 {client.office ? (
                   <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                     {client.office.name}
+                  </span>
+                ) : null}
+                {primaryIndustry ? (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">
+                    {primaryIndustry.name}
+                    {otherIndustryCount > 0 ? (
+                      <Tooltip>
+                        <TooltipTrigger render={<span className="cursor-default" />}>
+                          +{otherIndustryCount}
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {client.industries
+                            .filter((i) => i.id !== primaryIndustry.id)
+                            .map((i) => i.name)
+                            .join('、')}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : null}
                   </span>
                 ) : null}
               </div>

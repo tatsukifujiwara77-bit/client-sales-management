@@ -5,10 +5,13 @@ const logger = new Logger('GeocodingUtil');
 export interface GeocodedCoordinates {
   lat: number;
   lng: number;
+  /** GSIが返した完全一致住所文字列（例:「福岡県福岡市中央区天神二丁目」）。都道府県の自動判定に利用する */
+  title?: string;
 }
 
 interface GsiAddressSearchResult {
   geometry?: { coordinates?: unknown };
+  properties?: { title?: unknown };
 }
 
 /**
@@ -58,7 +61,8 @@ export async function geocodeAddress(address: string): Promise<GeocodedCoordinat
     if (typeof lat !== 'number' || typeof lng !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lng)) {
       return null;
     }
-    return { lat, lng };
+    const title = results[0]?.properties?.title;
+    return typeof title === 'string' ? { lat, lng, title } : { lat, lng };
   } catch (err) {
     logger.warn(`Geocoding failed for address "${trimmed}": ${(err as Error).message}`);
     return null;

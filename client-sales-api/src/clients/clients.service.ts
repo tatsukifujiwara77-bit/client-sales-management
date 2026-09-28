@@ -12,13 +12,17 @@ import type { UpdateClientDto } from './dto/update-client.dto.js';
 import type { ListClientsQueryDto, ClientSortField } from './dto/list-clients-query.dto.js';
 import type { AssignClientDto } from './dto/assign-client.dto.js';
 import type { PipelineQueryDto } from './dto/pipeline-query.dto.js';
+import type { GroupedByIndustryQueryDto } from './dto/grouped-by-industry-query.dto.js';
 import { mapClientDetailRow, mapClientListRow } from './clients.mapper.js';
 import { geocodeAddress } from './geocoding.util.js';
+import { extractPrefecture, PREFECTURES } from './prefecture.util.js';
+import { NO_MATCH_CLIENT_ID, resolveClientIdsForIndustryFilter } from './industry-filter.util.js';
 import type {
   ClientAssignmentItem,
   ClientDetail,
   ClientDossier,
   ClientListItem,
+  IndustryColumn,
   PipelineColumn,
   RawAssignmentEmbed,
   RawClientDetailRow,
@@ -33,19 +37,23 @@ const SORT_COLUMN_MAP: Record<ClientSortField, string> = {
   updatedAt: 'updated_at',
 };
 
+const INDUSTRIES_COLUMNS = 'industry_id, is_primary, industry:industries(id, name)';
+
 const LIST_COLUMNS =
-  'id, company_name, temperature, address, building_name, last_visited_at, last_activity_at, updated_at, ' +
+  'id, company_name, temperature, address, building_name, prefecture, last_visited_at, last_activity_at, updated_at, ' +
   'office:offices(id, name), ' +
-  'sales_stage:sales_stages!inner(id, name, is_closed)';
+  'sales_stage:sales_stages!inner(id, name, is_closed), ' +
+  `industries:client_industries(${INDUSTRIES_COLUMNS})`;
 
 const DETAIL_COLUMNS =
-  'id, company_name, temperature, address, building_name, last_visited_at, last_activity_at, updated_at, ' +
+  'id, company_name, temperature, address, building_name, prefecture, last_visited_at, last_activity_at, updated_at, ' +
   'lat, lng, website_url, characteristics, caution_notes, created_at, created_by, updated_by, ' +
   'office:offices(id, name), ' +
   'sales_stage:sales_stages!inner(id, name, is_closed), ' +
   'loss_reason:loss_reasons(id, name), ' +
   'discovered_by_profile:profiles!clients_discovered_by_fkey(id, full_name), ' +
-  'assignments:client_assignments(user_id, is_primary, profile:profiles(id, full_name))';
+  'assignments:client_assignments(user_id, is_primary, profile:profiles(id, full_name)), ' +
+  `industries:client_industries(${INDUSTRIES_COLUMNS})`;
 
 const ASSIGNMENTS_COLUMNS = 'user_id, is_primary, profile:profiles(id, full_name)';
 
@@ -91,6 +99,9 @@ export class ClientsService {
     if (query.temperature) {
       builder = builder.eq('temperature', query.temperature);
     }
+    if (query.prefecture) {
+      builder = builder.eq('prefecture', query.prefecture);
+    }
     if (query.isClosed !== undefined) {
       builder = builder.eq('sales_stage.is_closed', query.isClosed);
     }
@@ -102,6 +113,10 @@ export class ClientsService {
       if (term) {
         builder = builder.or(`company_name.ilike.%${term}%,address.ilike.%${term}%`);
       }
+    }
+    if (query.industryIds && query.industryIds.length > 0) {
+      const allowedIds = await resolveClientIdsForIndustryFilter(client, query.industryIds);
+      builder = builder.in('id', allowedIds.length > 0 ? allowedIds : [NO_MATCH_CLIENT_ID]);
     }
 
     const from = (page - 1) * pageSize;
@@ -222,6 +237,121 @@ export class ClientsService {
     return columns;
   }
 
+  /** client_industriesから「主業種がindustryIdであるclient_id」の一覧を取得する（業種別グループ表示用） */
+  private async getClientIdsWithPrimaryIndustry(
+    client: ReturnType<SupabaseRequestService['getClient']>,
+    industryId: string,
+  ): Promise<string[]> {
+    const { data, error } = await client
+      .from('client_industries')
+      .select('client_id')
+      .eq('industry_id', industryId)
+      .eq('is_primary', true);
+    throwIfSupabaseError(error, { entityName: 'Client' });
+    return ((data ?? []) as { client_id: string }[]).map((row) => row.client_id);
+  }
+
+  /**
+   * 業種別グループ表示（一覧・営業リストの「一覧／業種別」切替用）。
+   * 業種マスタのsort_order順＋末尾に「未設定」グループを固定で並べる。
+   * 各クライアントは主業種(client_industries.is_primary=true)のグループにのみ計上するため
+   * (未設定グループ=業種が1つも無いクライアント)、件数の合計はGET /clientsの総件数と一致する。
+   * 既存の絞り込み条件は各グループに同様に適用する。
+   */
+  async getGroupedByIndustry(query: GroupedByIndustryQueryDto): Promise<IndustryColumn[]> {
+    const client = this.supabaseRequestService.getClient();
+    const perColumnLimit = query.perColumnLimit ?? 50;
+
+    const { data: industryRows, error: industriesError } = await client
+      .from('industries')
+      .select('id, name')
+      .order('sort_order');
+    throwIfSupabaseError(industriesError, { entityName: 'Industry' });
+    const industries = (industryRows ?? []) as { id: string; name: string }[];
+
+    const searchTerm = query.search ? sanitizeSearchTerm(query.search) : undefined;
+
+    // 業種フィルタ(絞り込みバー側)が指定されている場合、各グループの対象クライアントを
+    // さらにその集合との積集合に絞る(「業種別」表示中でも絞り込み条件は効かせる)。
+    const filterAllowedIds =
+      query.industryIds && query.industryIds.length > 0
+        ? new Set(await resolveClientIdsForIndustryFilter(client, query.industryIds))
+        : undefined;
+
+    const buildColumn = async (industry: { id: string; name: string } | null): Promise<IndustryColumn> => {
+      const primaryIds = industry
+        ? await this.getClientIdsWithPrimaryIndustry(client, industry.id)
+        : await resolveClientIdsForIndustryFilter(client, ['unassigned']);
+      const groupIds = filterAllowedIds ? primaryIds.filter((id) => filterAllowedIds.has(id)) : primaryIds;
+
+      if (groupIds.length === 0) {
+        return { industry, count: 0, clients: [] };
+      }
+
+      const assignmentsEmbed = query.assignedTo
+        ? `assignments:client_assignments!inner(${ASSIGNMENTS_COLUMNS})`
+        : `assignments:client_assignments(${ASSIGNMENTS_COLUMNS})`;
+      // head:trueのcount専用クエリは、絞り込みに使うembed(is_closed/assignedTo)だけを最小限に含める
+      const countSelect = query.assignedTo
+        ? 'id, sales_stage:sales_stages!inner(is_closed), assignments:client_assignments!inner(user_id)'
+        : 'id, sales_stage:sales_stages!inner(is_closed)';
+
+      let countBuilder = client
+        .from('clients')
+        .select(countSelect, { count: 'exact', head: true })
+        .in('id', groupIds);
+      let listBuilder = client
+        .from('clients')
+        .select(`${LIST_COLUMNS}, ${assignmentsEmbed}`)
+        .in('id', groupIds);
+
+      if (query.officeId) {
+        countBuilder = countBuilder.eq('office_id', query.officeId);
+        listBuilder = listBuilder.eq('office_id', query.officeId);
+      }
+      if (query.salesStageId) {
+        countBuilder = countBuilder.eq('sales_stage_id', query.salesStageId);
+        listBuilder = listBuilder.eq('sales_stage_id', query.salesStageId);
+      }
+      if (query.temperature) {
+        countBuilder = countBuilder.eq('temperature', query.temperature);
+        listBuilder = listBuilder.eq('temperature', query.temperature);
+      }
+      if (query.prefecture) {
+        countBuilder = countBuilder.eq('prefecture', query.prefecture);
+        listBuilder = listBuilder.eq('prefecture', query.prefecture);
+      }
+      if (query.isClosed !== undefined) {
+        countBuilder = countBuilder.eq('sales_stage.is_closed', query.isClosed);
+        listBuilder = listBuilder.eq('sales_stage.is_closed', query.isClosed);
+      }
+      if (query.assignedTo) {
+        countBuilder = countBuilder.eq('assignments.user_id', query.assignedTo);
+        listBuilder = listBuilder.eq('assignments.user_id', query.assignedTo);
+      }
+      if (searchTerm) {
+        const orFilter = `company_name.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%`;
+        countBuilder = countBuilder.or(orFilter);
+        listBuilder = listBuilder.or(orFilter);
+      }
+
+      const [{ count, error: countError }, { data: rows, error: listError }] = await Promise.all([
+        countBuilder,
+        listBuilder.order('updated_at', { ascending: false }).limit(perColumnLimit),
+      ]);
+      throwIfSupabaseError(countError, { entityName: 'Client' });
+      throwIfSupabaseError(listError, { entityName: 'Client' });
+
+      return {
+        industry,
+        count: count ?? 0,
+        clients: ((rows ?? []) as unknown as RawClientListRow[]).map(mapClientListRow),
+      };
+    };
+
+    return Promise.all([...industries.map((industry) => buildColumn(industry)), buildColumn(null)]);
+  }
+
   async findOne(id: string): Promise<ClientDetail> {
     const client = this.supabaseRequestService.getClient();
     const { data, error } = await client
@@ -242,25 +372,75 @@ export class ClientsService {
    * lat/lngが明示的に指定されていれば(手動での座標指定を優先して)そのまま使う。
    * 指定が無く住所がある場合のみ、国土地理院の住所検索APIで自動的にジオコーディングする。
    * 該当なし・API失敗時はundefinedのまま返す(保存自体は失敗させず、地図にピンが出ないだけにする)。
+   *
+   * 都道府県は住所文字列からの判定を最優先し、それで判定できない場合のみ
+   * ジオコーディング結果(GSIの完全一致住所)を使って補完する。手動lat/lng指定時で
+   * ジオコーディング自体は不要な場合でも、都道府県が住所文字列だけで判定できなければ
+   * 都道府県判定のためだけにジオコーディングを1回呼ぶ(座標には反映しない)。
    */
-  private async resolveCoordinates(
+  private async resolveCoordinatesAndPrefecture(
     address: string | undefined,
     lat: number | undefined,
     lng: number | undefined,
-  ): Promise<{ lat: number | undefined; lng: number | undefined }> {
-    if (lat !== undefined || lng !== undefined) {
-      return { lat, lng };
-    }
+  ): Promise<{ lat: number | undefined; lng: number | undefined; prefecture: string | null }> {
     if (!address) {
-      return { lat, lng };
+      return { lat, lng, prefecture: null };
     }
-    const geocoded = await geocodeAddress(address);
-    return geocoded ? { lat: geocoded.lat, lng: geocoded.lng } : { lat, lng };
+
+    let prefecture = extractPrefecture(address);
+    const needsCoordinates = lat === undefined && lng === undefined;
+
+    if (needsCoordinates || !prefecture) {
+      const geocoded = await geocodeAddress(address);
+      if (geocoded) {
+        if (needsCoordinates) {
+          lat = geocoded.lat;
+          lng = geocoded.lng;
+        }
+        prefecture ??= extractPrefecture(address, geocoded.title);
+      }
+    }
+
+    return { lat, lng, prefecture };
+  }
+
+  /**
+   * 業種の紐付けを全洗い替えする(担当営業アサインと異なり、フォーム内で完結する単純なタグ
+   * 情報のため、create/updateと同じリクエスト内で処理する)。1クライアントにつき主業種は
+   * 必ず1件というDB制約(uidx_client_industries_primary)を満たすよう、主業種は
+   * primaryIndustryIdが industryIds に含まれていればそれを、無ければ先頭を採用する。
+   */
+  private async syncIndustries(
+    clientId: string,
+    industryIds: string[],
+    primaryIndustryId: string | undefined,
+  ): Promise<void> {
+    const client = this.supabaseRequestService.getClient();
+
+    const { error: deleteError } = await client.from('client_industries').delete().eq('client_id', clientId);
+    throwIfSupabaseError(deleteError, { entityName: 'Client industry' });
+
+    if (industryIds.length === 0) {
+      return;
+    }
+
+    const uniqueIds = Array.from(new Set(industryIds));
+    const effectivePrimary =
+      primaryIndustryId && uniqueIds.includes(primaryIndustryId) ? primaryIndustryId : uniqueIds[0];
+
+    const rows = uniqueIds.map((industryId) => ({
+      client_id: clientId,
+      industry_id: industryId,
+      is_primary: industryId === effectivePrimary,
+    }));
+
+    const { error: insertError } = await client.from('client_industries').insert(rows);
+    throwIfSupabaseError(insertError, { entityName: 'Client industry' });
   }
 
   async create(dto: CreateClientDto, currentUser: AuthUser): Promise<ClientDetail> {
     const client = this.supabaseRequestService.getClient();
-    const { lat, lng } = await this.resolveCoordinates(dto.address, dto.lat, dto.lng);
+    const { lat, lng, prefecture } = await this.resolveCoordinatesAndPrefecture(dto.address, dto.lat, dto.lng);
 
     const insertRow = {
       company_name: dto.companyName,
@@ -269,6 +449,7 @@ export class ClientsService {
       temperature: dto.temperature,
       address: dto.address,
       building_name: dto.buildingName,
+      prefecture,
       lat,
       lng,
       website_url: dto.websiteUrl,
@@ -283,11 +464,14 @@ export class ClientsService {
     const { data, error } = await client
       .from('clients')
       .insert(insertRow)
-      .select(DETAIL_COLUMNS)
+      .select('id')
       .single();
 
     throwIfSupabaseError(error, { entityName: 'Client' });
-    return mapClientDetailRow(data as unknown as RawClientDetailRow);
+    const clientId = (data as unknown as { id: string }).id;
+
+    await this.syncIndustries(clientId, dto.industryIds ?? [], dto.primaryIndustryId);
+    return this.findOne(clientId);
   }
 
   async update(id: string, dto: UpdateClientDto, currentUser: AuthUser): Promise<ClientDetail> {
@@ -306,12 +490,14 @@ export class ClientsService {
     if (dto.discoveredBy !== undefined) updateRow.discovered_by = dto.discoveredBy;
     if (dto.lossReasonId !== undefined) updateRow.loss_reason_id = dto.lossReasonId;
 
-    // 住所が変更される場合は、緯度経度が明示的に指定されていなければ自動でジオコーディングする。
-    // 住所が変わらない更新では、指定された緯度経度(手動入力)だけをそのまま反映する。
+    // 住所が変更される場合は、緯度経度が明示的に指定されていなければ自動でジオコーディングし、
+    // 都道府県も住所から再判定する。住所が変わらない更新では、指定された緯度経度(手動入力)
+    // だけをそのまま反映し、都道府県(自動導出専用・手入力欄なし)には触れない。
     if (dto.address !== undefined) {
-      const { lat, lng } = await this.resolveCoordinates(dto.address, dto.lat, dto.lng);
+      const { lat, lng, prefecture } = await this.resolveCoordinatesAndPrefecture(dto.address, dto.lat, dto.lng);
       if (lat !== undefined) updateRow.lat = lat;
       if (lng !== undefined) updateRow.lng = lng;
+      updateRow.prefecture = prefecture;
     } else {
       if (dto.lat !== undefined) updateRow.lat = dto.lat;
       if (dto.lng !== undefined) updateRow.lng = dto.lng;
@@ -329,6 +515,11 @@ export class ClientsService {
       // RLSにより対象が0件（存在しない、またはアクセス権が無い）。
       // 存在有無を漏らさないため、どちらの場合も一律 404 とする。
       throw new NotFoundException('Client not found.');
+    }
+
+    if (dto.industryIds !== undefined) {
+      await this.syncIndustries(id, dto.industryIds, dto.primaryIndustryId);
+      return this.findOne(id);
     }
 
     return mapClientDetailRow(data as unknown as RawClientDetailRow);
@@ -369,6 +560,62 @@ export class ClientsService {
     }
 
     return { clientsChecked: rows.length, clientsUpdated };
+  }
+
+  /**
+   * 都道府県が未設定の既存クライアントを、まとめて住所から判定して埋める
+   * (管理者限定。都道府県カラム追加前に登録されていたデータの一括バックフィル用)。
+   * 1回の呼び出しで最大500件まで処理する。ベストエフォート: 判定できない場合はスキップする。
+   */
+  async backfillPrefecture(): Promise<{ clientsChecked: number; clientsUpdated: number }> {
+    const client = this.supabaseRequestService.getClient();
+
+    const { data, error } = await client
+      .from('clients')
+      .select('id, address')
+      .not('address', 'is', null)
+      .is('prefecture', null)
+      .limit(500);
+    throwIfSupabaseError(error, { entityName: 'Client' });
+
+    const rows = (data ?? []) as { id: string; address: string | null }[];
+    let clientsUpdated = 0;
+
+    for (const row of rows) {
+      if (!row.address) continue;
+
+      let prefecture = extractPrefecture(row.address);
+      if (!prefecture) {
+        const geocoded = await geocodeAddress(row.address);
+        prefecture = geocoded ? extractPrefecture(row.address, geocoded.title) : null;
+      }
+      if (!prefecture) continue;
+
+      const { error: updateError } = await client.from('clients').update({ prefecture }).eq('id', row.id);
+      if (!updateError) {
+        clientsUpdated += 1;
+      }
+    }
+
+    return { clientsChecked: rows.length, clientsUpdated };
+  }
+
+  /**
+   * 絞り込みバーの都道府県セレクトの候補一覧（設計書「拠点と連動」要件）。
+   * officeIdを指定すると、その拠点に紐づくクライアントの都道府県だけに絞る。
+   */
+  async getDistinctPrefectures(officeId?: string): Promise<string[]> {
+    const client = this.supabaseRequestService.getClient();
+    let builder = client.from('clients').select('prefecture').not('prefecture', 'is', null);
+    if (officeId) {
+      builder = builder.eq('office_id', officeId);
+    }
+
+    const { data, error } = await builder;
+    throwIfSupabaseError(error, { entityName: 'Client' });
+
+    const present = new Set(((data ?? []) as { prefecture: string }[]).map((row) => row.prefecture));
+    return PREFECTURES.filter((pref) => present.has(pref));
   }
 
   /** 関連する活動・次回アクション・アラート・担当割り当て等はON DELETE CASCADEで一括削除される。 */

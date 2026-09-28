@@ -16,7 +16,7 @@ describe('geocodeAddress', () => {
     }) as unknown as typeof fetch;
 
     const result = await geocodeAddress('福岡県福岡市中央区天神2丁目8-35');
-    expect(result).toEqual({ lat: 33.5902, lng: 130.4017 });
+    expect(result).toEqual({ lat: 33.5902, lng: 130.4017, title: '福岡県福岡市' });
   });
 
   it('returns null when the address is empty/whitespace-only (does not call fetch)', async () => {

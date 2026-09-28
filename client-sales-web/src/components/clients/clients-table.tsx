@@ -45,6 +45,7 @@ export function ClientsTable({
             <TableBody>
               {items.map((client) => {
                 const fullAddress = formatFullAddress(client.address, client.buildingName);
+                const primaryIndustry = client.industries.find((i) => i.isPrimary) ?? client.industries[0];
                 return (
                 <TableRow key={client.id}>
                   <TableCell className="max-w-52">
@@ -53,6 +54,16 @@ export function ClientsTable({
                     </Link>
                     {fullAddress ? (
                       <span className="line-clamp-1 block text-xs text-muted-foreground">{fullAddress}</span>
+                    ) : null}
+                    {primaryIndustry ? (
+                      <span className="mt-1 flex flex-wrap items-center gap-1">
+                        <span className="inline-flex items-center rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                          {primaryIndustry.name}
+                        </span>
+                        {client.industries.length > 1 ? (
+                          <span className="text-[10px] text-muted-foreground">+{client.industries.length - 1}</span>
+                        ) : null}
+                      </span>
                     ) : null}
                   </TableCell>
                   <TableCell className="hidden whitespace-nowrap text-muted-foreground xl:table-cell">
