@@ -32,6 +32,8 @@ interface ClientFormValues {
   buildingName: string;
   characteristics: string;
   cautionNotes: string;
+  noVisitAlertExcluded: boolean;
+  noVisitAlertExcludedReason: string;
 }
 
 function toFormValues(client: ClientDetail | null): ClientFormValues {
@@ -48,6 +50,8 @@ function toFormValues(client: ClientDetail | null): ClientFormValues {
     buildingName: client?.buildingName ?? '',
     characteristics: client?.characteristics ?? '',
     cautionNotes: client?.cautionNotes ?? '',
+    noVisitAlertExcluded: client?.noVisitAlertExcluded ?? false,
+    noVisitAlertExcludedReason: client?.noVisitAlertExcludedReason ?? '',
   };
 }
 
@@ -158,6 +162,10 @@ export function ClientForm({
         buildingName: values.buildingName.trim() || undefined,
         characteristics: values.characteristics.trim() || undefined,
         cautionNotes: values.cautionNotes.trim() || undefined,
+        noVisitAlertExcluded: values.noVisitAlertExcluded,
+        noVisitAlertExcludedReason: values.noVisitAlertExcluded
+          ? values.noVisitAlertExcludedReason.trim() || undefined
+          : '',
       };
 
       const clientId = isEditing
@@ -384,6 +392,26 @@ export function ClientForm({
           placeholder="対応時に気をつけること"
           rows={3}
         />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={values.noVisitAlertExcluded}
+            onChange={(e) => update('noVisitAlertExcluded', e.target.checked)}
+            className="size-4 rounded border-input accent-primary"
+          />
+          訪問なしアラートの対象外にする
+        </label>
+        {values.noVisitAlertExcluded ? (
+          <Textarea
+            value={values.noVisitAlertExcludedReason}
+            onChange={(e) => update('noVisitAlertExcludedReason', e.target.value)}
+            placeholder="対象外にする理由(任意)"
+            rows={2}
+          />
+        ) : null}
       </div>
 
       <div className="flex justify-end gap-2 pt-2">

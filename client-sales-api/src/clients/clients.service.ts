@@ -47,7 +47,9 @@ const LIST_COLUMNS =
 
 const DETAIL_COLUMNS =
   'id, company_name, temperature, address, building_name, prefecture, last_visited_at, last_activity_at, updated_at, ' +
-  'lat, lng, website_url, characteristics, caution_notes, created_at, created_by, updated_by, ' +
+  'lat, lng, website_url, characteristics, caution_notes, ' +
+  'no_visit_alert_excluded, no_visit_alert_excluded_reason, ' +
+  'created_at, created_by, updated_by, ' +
   'office:offices(id, name), ' +
   'sales_stage:sales_stages!inner(id, name, is_closed), ' +
   'loss_reason:loss_reasons(id, name), ' +
@@ -455,6 +457,8 @@ export class ClientsService {
       website_url: dto.websiteUrl,
       characteristics: dto.characteristics,
       caution_notes: dto.cautionNotes,
+      no_visit_alert_excluded: dto.noVisitAlertExcluded ?? false,
+      no_visit_alert_excluded_reason: dto.noVisitAlertExcludedReason,
       discovered_by: dto.discoveredBy ?? currentUser.id,
       loss_reason_id: dto.lossReasonId,
       created_by: currentUser.id,
@@ -487,6 +491,10 @@ export class ClientsService {
     if (dto.websiteUrl !== undefined) updateRow.website_url = dto.websiteUrl;
     if (dto.characteristics !== undefined) updateRow.characteristics = dto.characteristics;
     if (dto.cautionNotes !== undefined) updateRow.caution_notes = dto.cautionNotes;
+    if (dto.noVisitAlertExcluded !== undefined) updateRow.no_visit_alert_excluded = dto.noVisitAlertExcluded;
+    if (dto.noVisitAlertExcludedReason !== undefined) {
+      updateRow.no_visit_alert_excluded_reason = dto.noVisitAlertExcludedReason;
+    }
     if (dto.discoveredBy !== undefined) updateRow.discovered_by = dto.discoveredBy;
     if (dto.lossReasonId !== undefined) updateRow.loss_reason_id = dto.lossReasonId;
 

@@ -199,7 +199,7 @@ export class AlertsService {
     try {
       const { data: clientRow, error: clientError } = await svc
         .from('clients')
-        .select('id, last_visited_at, created_at, sales_stage:sales_stages(is_closed)')
+        .select('id, last_visited_at, created_at, no_visit_alert_excluded, sales_stage:sales_stages(is_closed)')
         .eq('id', clientId)
         .maybeSingle();
       if (clientError || !clientRow) {
@@ -237,6 +237,7 @@ export class AlertsService {
         clientRow as unknown as {
           last_visited_at: string | null;
           created_at: string;
+          no_visit_alert_excluded: boolean;
           sales_stage: { is_closed: boolean } | null;
         },
         (pendingItems ?? []) as PendingActionItemRow[],
@@ -330,7 +331,12 @@ export class AlertsService {
 
   private diffAlerts(
     clientId: string,
-    clientRow: { last_visited_at: string | null; created_at: string; sales_stage: { is_closed: boolean } | null },
+    clientRow: {
+      last_visited_at: string | null;
+      created_at: string;
+      no_visit_alert_excluded: boolean;
+      sales_stage: { is_closed: boolean } | null;
+    },
     pendingItems: PendingActionItemRow[],
     existingAlerts: ExistingAlertRow[],
     noVisitThresholdDays: number,
@@ -411,14 +417,15 @@ export class AlertsService {
       }
     }
 
-    // --- 3ヶ月訪問なしアラート（営業終了クライアントは対象外） ---
+    // --- 3ヶ月訪問なしアラート（営業終了クライアント・個別に対象外設定したクライアントは対象外） ---
     // 訪問記録が一度も無いクライアントは、登録日を基準に閾値日数を判定する
     // (以前は訪問記録が無いだけで登録直後でも即座にアラート対象にしてしまっていた)。
     const isClosed = clientRow.sales_stage?.is_closed ?? false;
     const lastVisitedAt = clientRow.last_visited_at;
     const referenceDate = lastVisitedAt ?? clientRow.created_at.slice(0, 10);
     const daysSinceReference = daysBetween(referenceDate, today);
-    const desiredNoVisit = !isClosed && daysSinceReference >= noVisitThresholdDays;
+    const desiredNoVisit =
+      !isClosed && !clientRow.no_visit_alert_excluded && daysSinceReference >= noVisitThresholdDays;
 
     if (desiredNoVisit && !openNoVisit) {
       toInsert.push({ client_id: clientId, action_item_id: null, alert_type: 'no_visit', target_date: lastVisitedAt });

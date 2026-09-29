@@ -55,7 +55,11 @@ export function ClientDetailTabs({
         <ActionItemsTab clientId={client.id} actionItems={actionItems} />
       </TabsContent>
       <TabsContent value="alerts" className="mt-4">
-        <AlertsTab alerts={alerts} />
+        <AlertsTab
+          alerts={alerts}
+          noVisitAlertExcluded={client.noVisitAlertExcluded}
+          noVisitAlertExcludedReason={client.noVisitAlertExcludedReason}
+        />
       </TabsContent>
     </Tabs>
   );

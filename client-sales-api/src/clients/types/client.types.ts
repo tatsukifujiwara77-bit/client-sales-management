@@ -66,6 +66,9 @@ export interface ClientDetail extends ClientListItem {
   websiteUrl: string | null;
   characteristics: string | null;
   cautionNotes: string | null;
+  /** trueの場合、このクライアントは「3ヶ月訪問なし」アラートの対象外 */
+  noVisitAlertExcluded: boolean;
+  noVisitAlertExcludedReason: string | null;
   discoveredBy: UserRef | null;
   lossReason: LossReasonRef | null;
   assignments: ClientAssignmentItem[];
@@ -136,6 +139,8 @@ export interface RawClientDetailRow extends RawClientListRow {
   website_url: string | null;
   characteristics: string | null;
   caution_notes: string | null;
+  no_visit_alert_excluded: boolean;
+  no_visit_alert_excluded_reason: string | null;
   loss_reason: RawLossReasonEmbed | null;
   discovered_by_profile: RawProfileEmbed | null;
   created_at: string;

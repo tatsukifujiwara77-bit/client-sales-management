@@ -240,6 +240,9 @@ export interface ClientDetail extends ClientListItem {
   websiteUrl: string | null;
   characteristics: string | null;
   cautionNotes: string | null;
+  /** trueの場合、このクライアントは「3ヶ月訪問なし」アラートの対象外 */
+  noVisitAlertExcluded: boolean;
+  noVisitAlertExcludedReason: string | null;
   discoveredBy: UserRef | null;
   lossReason: { id: string; name: string } | null;
   assignments: ClientAssignmentItem[];

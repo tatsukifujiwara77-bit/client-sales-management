@@ -3,20 +3,36 @@ import { AlertStatusButton } from '@/components/alerts/alert-status-button';
 import { ALERT_TYPE_ICONS, ALERT_TYPE_ICON_CLASSES, ALERT_TYPE_LABELS, formatDateSlash } from '@/lib/domain-labels';
 import type { Alert } from '@/lib/api/types';
 
-export function AlertsTab({ alerts }: { alerts: Alert[] }) {
+interface AlertsTabProps {
+  alerts: Alert[];
+  noVisitAlertExcluded: boolean;
+  noVisitAlertExcludedReason: string | null;
+}
+
+export function AlertsTab({ alerts, noVisitAlertExcluded, noVisitAlertExcludedReason }: AlertsTabProps) {
+  const excludedNotice = noVisitAlertExcluded ? (
+    <p className="text-xs text-muted-foreground">
+      訪問なしアラート：対象外{noVisitAlertExcludedReason ? `（${noVisitAlertExcludedReason}）` : ''}
+    </p>
+  ) : null;
+
   if (alerts.length === 0) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-          <span className="text-2xl">✅</span>
-          <p className="text-sm font-medium text-foreground">すべて対応済みです</p>
-        </CardContent>
-      </Card>
+      <div className="space-y-2">
+        {excludedNotice}
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
+            <span className="text-2xl">✅</span>
+            <p className="text-sm font-medium text-foreground">すべて対応済みです</p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-2">
+      {excludedNotice}
       {alerts.map((alert) => {
         const Icon = ALERT_TYPE_ICONS[alert.alertType];
         return (

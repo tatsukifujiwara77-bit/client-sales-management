@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsIn,
   IsLatitude,
   IsLongitude,
@@ -90,4 +91,15 @@ export class CreateClientDto {
   @IsOptional()
   @IsUUID()
   primaryIndustryId?: string;
+
+  /** trueの場合、このクライアントは「3ヶ月訪問なし」アラートの対象外にする */
+  @IsOptional()
+  @IsBoolean()
+  noVisitAlertExcluded?: boolean;
+
+  /** 対象外にした理由(任意) */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  noVisitAlertExcludedReason?: string;
 }

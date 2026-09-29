@@ -76,6 +76,8 @@ export function mapClientDetailRow(row: RawClientDetailRow): ClientDetail {
     websiteUrl: row.website_url,
     characteristics: row.characteristics,
     cautionNotes: row.caution_notes,
+    noVisitAlertExcluded: row.no_visit_alert_excluded,
+    noVisitAlertExcludedReason: row.no_visit_alert_excluded_reason,
     discoveredBy: row.discovered_by_profile
       ? { id: row.discovered_by_profile.id, fullName: row.discovered_by_profile.full_name }
       : null,
