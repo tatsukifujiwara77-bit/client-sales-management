@@ -14,7 +14,9 @@ export default async function ClientDetailPage({ params }: PageProps<'/clients/[
     serverFetchApi<ClientDossier>(`/clients/${id}/dossier`),
     serverFetchApi<PagedResult<Activity>>(`/clients/${id}/activities`),
     serverFetchApi<PagedResult<ActionItem>>(`/clients/${id}/action-items`),
-    serverFetchApi<AlertsDashboardResponse>(`/clients/${id}/alerts`),
+    // refresh=true: このクライアントのアラートだけを対象にした軽い再計算なので、
+    // 詳細ページを開くたびに実行しても問題ない(全クライアント分の再計算とは別)。
+    serverFetchApi<AlertsDashboardResponse>(`/clients/${id}/alerts?refresh=true`),
   ]);
 
   return (

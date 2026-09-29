@@ -26,6 +26,9 @@ export default async function AlertsPage({ searchParams }: PageProps<'/alerts'>)
   query.set('status', status);
   query.set('page', String(page));
   query.set('pageSize', String(PAGE_SIZE));
+  // このページを実際に開いたときだけ、閲覧前にアラートを再計算する(サイドバーの
+  // バッジ件数取得等、全画面共通で毎回走る経路まで対象にすると重くなるため)。
+  query.set('refresh', 'true');
 
   const [{ counts, alerts }, offices, me] = await Promise.all([
     serverFetchApi<AlertsDashboardResponse>(`/alerts?${query.toString()}`),

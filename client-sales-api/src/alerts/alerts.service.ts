@@ -49,24 +49,33 @@ export class AlertsService {
   // ------------------------------------------------------------
 
   /**
-   * 閲覧のたびにアラートを最新化する(1時間ごとのcronだけに頼らない)。
+   * 閲覧時にアラートを最新化する(1時間ごとのcronだけに頼らない)。
    * このコードベースが動いているホスティング環境によっては、常駐プロセス前提の
    * 定期実行(@Cron)が実際には機能しないことがあり、その場合「日付が経過しただけ」
    * では永久にalertsテーブルが古いまま(例: 期限超過になっているのに「今日が期限」
-   * のまま)になってしまう不具合が実際に発生した。recomputeAll()自体は重い処理
-   * だが、このアプリの想定規模では閲覧のたびに実行しても許容範囲。
+   * のまま)になってしまう不具合が実際に発生した。
+   *
+   * ただしrecomputeAll()は全クライアントを1件ずつ問い合わせる重い処理のため、
+   * サイドバー/ヘッダーのバッジ件数取得のような「全画面共通レイアウトから毎回
+   * 呼ばれる経路」でも実行すると、ページ遷移のたびに全件再計算が走ってアプリ全体が
+   * 重くなってしまう(実際に発生させてしまった)。そのため呼び出し元が明示的に
+   * リクエストした場合(query.refresh)のみ実行し、対象クライアントが1件に絞れる
+   * 場合(clientIdあり)はそのクライアント分だけの軽い再計算に留める。
    * ベストエフォート: service_role未設定や失敗時はログのみで、閲覧自体は止めない。
    */
-  private async ensureFreshAlerts(): Promise<void> {
+  private async ensureFreshAlerts(clientId?: string): Promise<void> {
     try {
-      await this.recomputeAll();
+      if (clientId) {
+        await this.recomputeForClient(clientId);
+      } else {
+        await this.recomputeAll();
+      }
     } catch (err) {
       this.logger.warn('Skipped on-read alert recompute', err as Error);
     }
   }
 
   async list(query: ListAlertsQueryDto, clientId?: string): Promise<PagedResult<Alert>> {
-    await this.ensureFreshAlerts();
     const client = this.supabaseRequestService.getClient();
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 50;
@@ -102,7 +111,6 @@ export class AlertsService {
   }
 
   async getCounts(clientId?: string, officeId?: string): Promise<AlertCounts> {
-    await this.ensureFreshAlerts();
     const client = this.supabaseRequestService.getClient();
 
     const countFor = async (alertType: AlertType): Promise<number> => {
@@ -133,11 +141,18 @@ export class AlertsService {
     return { overdue, dueToday, dueThisWeek, noVisit };
   }
 
-  /** ダッシュボード用: 件数サマリー＋一覧を1回で返す */
+  /**
+   * アラート一覧＋件数サマリーを1回で返す。GET /alerts（アラート画面）と
+   * GET /clients/:clientId/alerts（クライアント詳細のアラートタブ）の両方から呼ばれる。
+   * query.refreshが指定されたときだけ、閲覧前に再計算する(ensureFreshAlerts参照)。
+   */
   async getDashboard(
     query: ListAlertsQueryDto,
     clientId?: string,
   ): Promise<{ counts: AlertCounts; alerts: PagedResult<Alert> }> {
+    if (query.refresh) {
+      await this.ensureFreshAlerts(clientId);
+    }
     const [counts, alerts] = await Promise.all([
       this.getCounts(clientId, query.officeId),
       this.list(query, clientId),

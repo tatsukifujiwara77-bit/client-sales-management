@@ -1,14 +1,6 @@
 import { serverFetchApi } from '@/lib/api/server';
 import { ClientsListPage } from '@/components/clients/clients-list-page';
-import type {
-  ClientListItem,
-  Industry,
-  IndustryColumn,
-  Office,
-  PagedResult,
-  SalesStage,
-  UserSummary,
-} from '@/lib/api/types';
+import type { ClientListItem, Industry, Office, PagedResult, SalesStage, UserSummary } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
 
@@ -45,13 +37,8 @@ export default async function ClientsPage({ searchParams }: PageProps<'/clients'
   query.set('page', String(page));
   query.set('pageSize', String(PAGE_SIZE));
 
-  const groupedQuery = new URLSearchParams(query);
-  groupedQuery.delete('page');
-  groupedQuery.delete('pageSize');
-
-  const [clients, grouped, offices, salesStages, industries, users] = await Promise.all([
+  const [clients, offices, salesStages, industries, users] = await Promise.all([
     serverFetchApi<PagedResult<ClientListItem>>(`/clients?${query.toString()}`),
-    serverFetchApi<IndustryColumn[]>(`/clients/grouped-by-industry?${groupedQuery.toString()}`),
     serverFetchApi<Office[]>('/offices'),
     serverFetchApi<SalesStage[]>('/sales-stages'),
     serverFetchApi<Industry[]>('/industries'),
@@ -69,7 +56,7 @@ export default async function ClientsPage({ searchParams }: PageProps<'/clients'
       users={users}
       industries={industries}
       flat={clients}
-      grouped={grouped}
+      isClosed
       basePath="/clients"
     />
   );

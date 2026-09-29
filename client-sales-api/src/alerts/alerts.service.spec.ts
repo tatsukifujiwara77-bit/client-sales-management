@@ -292,4 +292,40 @@ describe('AlertsService', () => {
       expect(calls.eq).toEqual(expect.arrayContaining([['client.office_id', 'office-1']]));
     });
   });
+
+  describe('getDashboard', () => {
+    it('does not recompute anything when query.refresh is not set (fast path for the layout badge etc.)', async () => {
+      const { builder } = createBuilderMock({ data: [], error: null, count: 0 });
+      const service = new AlertsService(buildSupabaseRequestServiceMock(() => builder), null);
+      const recomputeAllSpy = vi.spyOn(service, 'recomputeAll');
+      const recomputeForClientSpy = vi.spyOn(service, 'recomputeForClient');
+
+      await service.getDashboard({ status: 'open' });
+
+      expect(recomputeAllSpy).not.toHaveBeenCalled();
+      expect(recomputeForClientSpy).not.toHaveBeenCalled();
+    });
+
+    it('recomputes only the given client (not all clients) when refresh is set with a clientId', async () => {
+      const { builder } = createBuilderMock({ data: [], error: null, count: 0 });
+      const service = new AlertsService(buildSupabaseRequestServiceMock(() => builder), null);
+      const recomputeAllSpy = vi.spyOn(service, 'recomputeAll');
+      const recomputeForClientSpy = vi.spyOn(service, 'recomputeForClient').mockResolvedValue(undefined);
+
+      await service.getDashboard({ status: 'open', refresh: true }, 'client-1');
+
+      expect(recomputeForClientSpy).toHaveBeenCalledWith('client-1');
+      expect(recomputeAllSpy).not.toHaveBeenCalled();
+    });
+
+    it('recomputes all clients when refresh is set without a clientId (main alerts page)', async () => {
+      const { builder } = createBuilderMock({ data: [], error: null, count: 0 });
+      const service = new AlertsService(buildSupabaseRequestServiceMock(() => builder), null);
+      const recomputeAllSpy = vi.spyOn(service, 'recomputeAll').mockResolvedValue({ clientsProcessed: 0 });
+
+      await service.getDashboard({ status: 'open', refresh: true });
+
+      expect(recomputeAllSpy).toHaveBeenCalledTimes(1);
+    });
+  });
 });

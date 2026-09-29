@@ -3,15 +3,7 @@ import { Plus } from 'lucide-react';
 import { serverFetchApi } from '@/lib/api/server';
 import { Button } from '@/components/ui/button';
 import { ClientsListPage } from '@/components/clients/clients-list-page';
-import type {
-  ClientListItem,
-  Industry,
-  IndustryColumn,
-  Office,
-  PagedResult,
-  SalesStage,
-  UserSummary,
-} from '@/lib/api/types';
+import type { ClientListItem, Industry, Office, PagedResult, SalesStage, UserSummary } from '@/lib/api/types';
 
 const PAGE_SIZE = 20;
 
@@ -48,13 +40,8 @@ export default async function SalesListPage({ searchParams }: PageProps<'/sales-
   query.set('page', String(page));
   query.set('pageSize', String(PAGE_SIZE));
 
-  const groupedQuery = new URLSearchParams(query);
-  groupedQuery.delete('page');
-  groupedQuery.delete('pageSize');
-
-  const [list, grouped, offices, salesStages, industries, users] = await Promise.all([
+  const [list, offices, salesStages, industries, users] = await Promise.all([
     serverFetchApi<PagedResult<ClientListItem>>(`/clients?${query.toString()}`),
-    serverFetchApi<IndustryColumn[]>(`/clients/grouped-by-industry?${groupedQuery.toString()}`),
     serverFetchApi<Office[]>('/offices'),
     serverFetchApi<SalesStage[]>('/sales-stages'),
     serverFetchApi<Industry[]>('/industries'),
@@ -80,7 +67,7 @@ export default async function SalesListPage({ searchParams }: PageProps<'/sales-
         users={users}
         industries={industries}
         flat={list}
-        grouped={grouped}
+        isClosed={false}
         basePath="/sales-list"
         emptyMessage="条件に一致する見込み客が見つかりませんでした"
       />
