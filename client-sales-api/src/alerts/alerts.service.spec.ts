@@ -212,6 +212,90 @@ describe('AlertsService', () => {
         expect.arrayContaining([expect.objectContaining({ alert_type: 'overdue', action_item_id: 'action-1' })]),
       );
     });
+
+    it('does not flag a newly-created client with no visit history yet (uses created_at as the reference date)', async () => {
+      const today = todayDateString();
+      const clientBuilder = createBuilderMock({
+        data: { last_visited_at: null, created_at: `${today}T00:00:00Z`, sales_stage: { is_closed: false } },
+        error: null,
+      }).builder;
+      const pendingItemsBuilder = createBuilderMock({ data: [], error: null }).builder;
+      const existingAlertsBuilder = createBuilderMock({ data: [], error: null }).builder;
+      const settingsBuilder = createBuilderMock({ data: { value: '90' }, error: null }).builder;
+
+      let insertCalled = false;
+      const calls: string[] = [];
+      const fromSpy = vi.fn((table: string) => {
+        calls.push(table);
+        if (table === 'clients') return clientBuilder;
+        if (table === 'action_items') return pendingItemsBuilder;
+        if (table === 'alert_settings') return settingsBuilder;
+        if (table === 'alerts') {
+          const alertsCallCount = calls.filter((t) => t === 'alerts').length;
+          if (alertsCallCount === 1) return existingAlertsBuilder;
+          const insertBuilder = createBuilderMock({ data: null, error: null }).builder;
+          insertBuilder.insert = () => {
+            insertCalled = true;
+            return insertBuilder;
+          };
+          return insertBuilder;
+        }
+        return createBuilderMock({ data: null, error: null }).builder;
+      });
+
+      const service = new AlertsService(
+        buildSupabaseRequestServiceMock(() => ({})),
+        { from: fromSpy } as any,
+      );
+
+      await service.recomputeForClient('client-1');
+
+      expect(insertCalled).toBe(false);
+    });
+
+    it('flags a client with no visit history once the threshold has elapsed since created_at', async () => {
+      const today = todayDateString();
+      const [year, month, day] = today.split('-').map(Number);
+      const longAgo = new Date(Date.UTC(year, month - 1, day - 100)).toISOString().slice(0, 10);
+      const clientBuilder = createBuilderMock({
+        data: { last_visited_at: null, created_at: `${longAgo}T00:00:00Z`, sales_stage: { is_closed: false } },
+        error: null,
+      }).builder;
+      const pendingItemsBuilder = createBuilderMock({ data: [], error: null }).builder;
+      const existingAlertsBuilder = createBuilderMock({ data: [], error: null }).builder;
+      const settingsBuilder = createBuilderMock({ data: { value: '90' }, error: null }).builder;
+
+      let insertedRows: any;
+      const calls: string[] = [];
+      const fromSpy = vi.fn((table: string) => {
+        calls.push(table);
+        if (table === 'clients') return clientBuilder;
+        if (table === 'action_items') return pendingItemsBuilder;
+        if (table === 'alert_settings') return settingsBuilder;
+        if (table === 'alerts') {
+          const alertsCallCount = calls.filter((t) => t === 'alerts').length;
+          if (alertsCallCount === 1) return existingAlertsBuilder;
+          const insertBuilder = createBuilderMock({ data: null, error: null }).builder;
+          insertBuilder.insert = (rows: unknown) => {
+            insertedRows = rows;
+            return insertBuilder;
+          };
+          return insertBuilder;
+        }
+        return createBuilderMock({ data: null, error: null }).builder;
+      });
+
+      const service = new AlertsService(
+        buildSupabaseRequestServiceMock(() => ({})),
+        { from: fromSpy } as any,
+      );
+
+      await service.recomputeForClient('client-1');
+
+      expect(insertedRows).toEqual(
+        expect.arrayContaining([expect.objectContaining({ alert_type: 'no_visit', action_item_id: null })]),
+      );
+    });
   });
 
   describe('recomputeAll', () => {
