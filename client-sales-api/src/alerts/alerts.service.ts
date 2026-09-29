@@ -7,7 +7,14 @@ import { throwIfSupabaseError } from '../common/supabase/supabase-error.util.js'
 import type { PagedResult } from '../common/types/paged-result.js';
 import type { ListAlertsQueryDto } from './dto/list-alerts-query.dto.js';
 import { classifyDueDate, daysBetween, todayDateString } from './date.util.js';
-import { mapAlertRow, type Alert, type AlertCounts, type AlertType, type RawAlertRow } from './alerts.types.js';
+import {
+  mapAlertRow,
+  type Alert,
+  type AlertCounts,
+  type AlertStatus,
+  type AlertType,
+  type RawAlertRow,
+} from './alerts.types.js';
 
 const COLUMNS =
   'id, client_id, action_item_id, alert_type, target_date, status, created_at, updated_at, ' +
@@ -20,10 +27,12 @@ interface PendingActionItemRow {
   due_date: string;
 }
 
-interface OpenAlertRow {
+interface ExistingAlertRow {
   id: string;
   action_item_id: string | null;
   alert_type: AlertType;
+  status: AlertStatus;
+  updated_at: string;
 }
 
 @Injectable()
@@ -39,7 +48,25 @@ export class AlertsService {
   // 閲覧・ステータス更新（RLS適用済みクライアント経由。通常のリクエストと同じ経路）
   // ------------------------------------------------------------
 
+  /**
+   * 閲覧のたびにアラートを最新化する(1時間ごとのcronだけに頼らない)。
+   * このコードベースが動いているホスティング環境によっては、常駐プロセス前提の
+   * 定期実行(@Cron)が実際には機能しないことがあり、その場合「日付が経過しただけ」
+   * では永久にalertsテーブルが古いまま(例: 期限超過になっているのに「今日が期限」
+   * のまま)になってしまう不具合が実際に発生した。recomputeAll()自体は重い処理
+   * だが、このアプリの想定規模では閲覧のたびに実行しても許容範囲。
+   * ベストエフォート: service_role未設定や失敗時はログのみで、閲覧自体は止めない。
+   */
+  private async ensureFreshAlerts(): Promise<void> {
+    try {
+      await this.recomputeAll();
+    } catch (err) {
+      this.logger.warn('Skipped on-read alert recompute', err as Error);
+    }
+  }
+
   async list(query: ListAlertsQueryDto, clientId?: string): Promise<PagedResult<Alert>> {
+    await this.ensureFreshAlerts();
     const client = this.supabaseRequestService.getClient();
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 50;
@@ -75,6 +102,7 @@ export class AlertsService {
   }
 
   async getCounts(clientId?: string, officeId?: string): Promise<AlertCounts> {
+    await this.ensureFreshAlerts();
     const client = this.supabaseRequestService.getClient();
 
     const countFor = async (alertType: AlertType): Promise<number> => {
@@ -176,13 +204,15 @@ export class AlertsService {
         return;
       }
 
-      const { data: openAlerts, error: openAlertsError } = await svc
+      // statusを絞らず全件取得する。却下・解決済みにしたアラートも、その時点で
+      // どの区分だったかをdiffAlerts側で参照し、「区分が変わっていなければ再表示しない」
+      // 判定に使うため。
+      const { data: existingAlerts, error: existingAlertsError } = await svc
         .from('alerts')
-        .select('id, action_item_id, alert_type')
-        .eq('client_id', clientId)
-        .eq('status', 'open');
-      if (openAlertsError) {
-        this.logger.warn(`Failed to load open alerts for client ${clientId}: ${openAlertsError.message}`);
+        .select('id, action_item_id, alert_type, status, updated_at')
+        .eq('client_id', clientId);
+      if (existingAlertsError) {
+        this.logger.warn(`Failed to load existing alerts for client ${clientId}: ${existingAlertsError.message}`);
         return;
       }
 
@@ -191,7 +221,7 @@ export class AlertsService {
         clientId,
         clientRow as unknown as { last_visited_at: string | null; sales_stage: { is_closed: boolean } | null },
         (pendingItems ?? []) as PendingActionItemRow[],
-        (openAlerts ?? []) as OpenAlertRow[],
+        (existingAlerts ?? []) as ExistingAlertRow[],
         noVisitThresholdDays,
       );
 
@@ -283,7 +313,7 @@ export class AlertsService {
     clientId: string,
     clientRow: { last_visited_at: string | null; sales_stage: { is_closed: boolean } | null },
     pendingItems: PendingActionItemRow[],
-    openAlerts: OpenAlertRow[],
+    existingAlerts: ExistingAlertRow[],
     noVisitThresholdDays: number,
   ): {
     toInsert: { client_id: string; action_item_id: string | null; alert_type: AlertType; target_date: string | null }[];
@@ -306,34 +336,55 @@ export class AlertsService {
       if (bucket) desiredByActionItem.set(item.id, bucket);
     }
 
-    const openByActionItem = new Map<string, OpenAlertRow>();
-    let openNoVisit: OpenAlertRow | undefined;
-    for (const alert of openAlerts) {
-      if (alert.action_item_id) {
+    // openは1件だけの想定（無ければclosed=却下/解決済みのうち一番新しいものを見る）。
+    // 却下・解決済みにした時点と区分が変わっていなければ、そのまま非表示を維持する
+    // （毎回自動再計算するようになったため、そうしないと却下が意味を成さなくなる）。
+    const openByActionItem = new Map<string, ExistingAlertRow>();
+    const closedByActionItem = new Map<string, ExistingAlertRow>();
+    let openNoVisit: ExistingAlertRow | undefined;
+    for (const alert of existingAlerts) {
+      if (!alert.action_item_id) {
+        if (alert.alert_type === 'no_visit' && alert.status === 'open') {
+          openNoVisit = alert;
+        }
+        continue;
+      }
+      if (alert.status === 'open') {
         openByActionItem.set(alert.action_item_id, alert);
-      } else if (alert.alert_type === 'no_visit') {
-        openNoVisit = alert;
+        continue;
+      }
+      const current = closedByActionItem.get(alert.action_item_id);
+      if (!current || alert.updated_at > current.updated_at) {
+        closedByActionItem.set(alert.action_item_id, alert);
       }
     }
 
     for (const [actionItemId, desiredType] of desiredByActionItem) {
-      const existing = openByActionItem.get(actionItemId);
-      if (!existing) {
-        toInsert.push({
-          client_id: clientId,
-          action_item_id: actionItemId,
-          alert_type: desiredType,
-          target_date: dueDateById.get(actionItemId) ?? null,
-        });
-      } else if (existing.alert_type !== desiredType) {
-        toResolveIds.push(existing.id);
-        toInsert.push({
-          client_id: clientId,
-          action_item_id: actionItemId,
-          alert_type: desiredType,
-          target_date: dueDateById.get(actionItemId) ?? null,
-        });
+      const openExisting = openByActionItem.get(actionItemId);
+      if (openExisting) {
+        if (openExisting.alert_type !== desiredType) {
+          toResolveIds.push(openExisting.id);
+          toInsert.push({
+            client_id: clientId,
+            action_item_id: actionItemId,
+            alert_type: desiredType,
+            target_date: dueDateById.get(actionItemId) ?? null,
+          });
+        }
+        continue;
       }
+
+      const closedExisting = closedByActionItem.get(actionItemId);
+      if (closedExisting && closedExisting.alert_type === desiredType) {
+        continue; // 却下/解決済みにした時から状況が変わっていないため、再表示しない
+      }
+
+      toInsert.push({
+        client_id: clientId,
+        action_item_id: actionItemId,
+        alert_type: desiredType,
+        target_date: dueDateById.get(actionItemId) ?? null,
+      });
     }
     for (const [actionItemId, existing] of openByActionItem) {
       if (!desiredByActionItem.has(actionItemId)) {

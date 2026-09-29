@@ -1,6 +1,14 @@
 import { InternalServerErrorException } from '@nestjs/common';
 import { AlertsService } from './alerts.service.js';
+import { todayDateString } from './date.util.js';
 import { SupabaseRequestService } from '../supabase/supabase-request.service.js';
+
+/** テスト実行日に依存せず「昨日」を求める(due_dateがtodayより前=overdueになるようにするため) */
+function yesterdayDateString(): string {
+  const [year, month, day] = todayDateString().split('-').map(Number);
+  const yesterday = new Date(Date.UTC(year, month - 1, day - 1));
+  return yesterday.toISOString().slice(0, 10);
+}
 
 interface MockResult {
   data: unknown;
@@ -90,6 +98,118 @@ describe('AlertsService', () => {
           expect.objectContaining({ alert_type: 'overdue', action_item_id: 'action-1' }),
           expect.objectContaining({ alert_type: 'no_visit', action_item_id: null }),
         ]),
+      );
+    });
+
+    it('does not re-open an alert that was dismissed while the due-date bucket is unchanged', async () => {
+      const today = todayDateString();
+      const clientBuilder = createBuilderMock({
+        data: { last_visited_at: today, sales_stage: { is_closed: false } },
+        error: null,
+      }).builder;
+      const pendingItemsBuilder = createBuilderMock({
+        data: [{ id: 'action-1', due_date: today }], // 今日が期限 → due_today
+        error: null,
+      }).builder;
+      const existingAlertsBuilder = createBuilderMock({
+        data: [
+          {
+            id: 'alert-1',
+            action_item_id: 'action-1',
+            alert_type: 'due_today',
+            status: 'dismissed',
+            updated_at: `${today}T00:00:00Z`,
+          },
+        ],
+        error: null,
+      }).builder;
+      const settingsBuilder = createBuilderMock({ data: { value: '90' }, error: null }).builder;
+
+      let insertCalled = false;
+      const calls: string[] = [];
+      const fromSpy = vi.fn((table: string) => {
+        calls.push(table);
+        if (table === 'clients') return clientBuilder;
+        if (table === 'action_items') return pendingItemsBuilder;
+        if (table === 'alert_settings') return settingsBuilder;
+        if (table === 'alerts') {
+          const alertsCallCount = calls.filter((t) => t === 'alerts').length;
+          if (alertsCallCount === 1) return existingAlertsBuilder;
+          const insertBuilder = createBuilderMock({ data: null, error: null }).builder;
+          insertBuilder.insert = (rows: unknown) => {
+            insertCalled = true;
+            return insertBuilder;
+          };
+          return insertBuilder;
+        }
+        return createBuilderMock({ data: null, error: null }).builder;
+      });
+
+      const service = new AlertsService(
+        buildSupabaseRequestServiceMock(() => ({})),
+        { from: fromSpy } as any,
+      );
+
+      await service.recomputeForClient('client-1');
+
+      expect(insertCalled).toBe(false);
+    });
+
+    it('re-opens a new alert when the due-date bucket has changed since it was dismissed', async () => {
+      const today = todayDateString();
+      const yesterday = yesterdayDateString();
+      const clientBuilder = createBuilderMock({
+        data: { last_visited_at: today, sales_stage: { is_closed: false } },
+        error: null,
+      }).builder;
+      const pendingItemsBuilder = createBuilderMock({
+        data: [{ id: 'action-1', due_date: yesterday }], // 昨日が期限 → overdue
+        error: null,
+      }).builder;
+      const existingAlertsBuilder = createBuilderMock({
+        data: [
+          {
+            // 却下した時点では"due_today"だったが、その後overdueに悪化している
+            id: 'alert-1',
+            action_item_id: 'action-1',
+            alert_type: 'due_today',
+            status: 'dismissed',
+            updated_at: `${yesterday}T00:00:00Z`,
+          },
+        ],
+        error: null,
+      }).builder;
+      const settingsBuilder = createBuilderMock({ data: { value: '90' }, error: null }).builder;
+
+      let insertedRows: any;
+      const calls: string[] = [];
+      const fromSpy = vi.fn((table: string) => {
+        calls.push(table);
+        if (table === 'clients') return clientBuilder;
+        if (table === 'action_items') return pendingItemsBuilder;
+        if (table === 'alert_settings') return settingsBuilder;
+        if (table === 'alerts') {
+          const alertsCallCount = calls.filter((t) => t === 'alerts').length;
+          if (alertsCallCount === 1) return existingAlertsBuilder;
+          const insertBuilder = createBuilderMock({ data: null, error: null }).builder;
+          insertBuilder.insert = (rows: unknown) => {
+            insertedRows = rows;
+            return insertBuilder;
+          };
+          return insertBuilder;
+        }
+        return createBuilderMock({ data: null, error: null }).builder;
+      });
+
+      const service = new AlertsService(
+        buildSupabaseRequestServiceMock(() => ({})),
+        { from: fromSpy } as any,
+      );
+
+      await service.recomputeForClient('client-1');
+
+      expect(insertedRows).toEqual(
+        expect.arrayContaining([expect.objectContaining({ alert_type: 'overdue', action_item_id: 'action-1' })]),
       );
     });
   });
